@@ -23,6 +23,7 @@ Next, set up a td-client with your API key for Treasure Data
 
 ```
 use td_client::client::*;
+use td_client::modle::*;
 
 let client = Client::new("your API key");
 ```
@@ -67,7 +68,8 @@ chunk.write_key_and_u8("age", 56).unwrap();
 
 let readable_chunk = chunk.close().unwrap();
 
-client.import_msgpack_gz_file_to_table("my_database", "my_table", 						readable_chunk.file_path.as_str(), None).unwrap();
+client.import_msgpack_gz_file_to_table("my_database", "my_table", 
+			readable_chunk.file_path.as_str(), None).unwrap();
 ```
 
 ### Information of jobs
