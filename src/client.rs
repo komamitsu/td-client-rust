@@ -17,8 +17,8 @@ use regex::Regex;
 use rustc_serialize::*;
 use rustc_serialize::json::{DecoderError, Json, ToJson};
 
-use td::model::*;
-use td::error::*;
+use model::*;
+use error::*;
 
 const DEFAULT_API_ENDPOINT: &'static str = "https://api.treasuredata.com";
 const DEFAULT_API_IMPORT_ENDPOINT: &'static str = "https://api-import.treasuredata.com";
@@ -484,7 +484,7 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use td::client::Client;
+    use client::Client;
 
     #[test]
     fn new() {

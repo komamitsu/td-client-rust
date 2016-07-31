@@ -89,8 +89,8 @@ macro_rules! pick_opt_u64_item {
 mod tests {
     use std::str::FromStr;
     use rustc_serialize::json::{DecoderError, Json};
-    use td::model::*;
-    use td::error::*;
+    use model::*;
+    use error::*;
 
     #[test]
     fn pick_string_item() {
