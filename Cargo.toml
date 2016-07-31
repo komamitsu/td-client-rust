@@ -1,0 +1,15 @@
+[package]
+name = "td-client"
+version = "0.1.0"
+authors = ["Mitsunori Komatsu <komamitsu@gmail.com>"]
+
+[dependencies]
+log = "*"
+hyper = "0.9"
+rustc-serialize = "0.3"
+rmp = "0.7"
+flate2 = { version = "0.2", features = ["zlib"], default-features = false }
+regex = "0.1"
+tempdir = "0.3"
+time = "0.1"
+chrono = { version = "0.2", features = ["rustc-serialize"] }
