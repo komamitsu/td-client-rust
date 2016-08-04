@@ -10,7 +10,7 @@ license = "Apache-2.0"
 keywords = ["TreasureData"]
 
 [dependencies]
-log = "*"
+log = "0.3"
 hyper = "0.9"
 rustc-serialize = "0.3"
 rmp = "0.7"
