@@ -7,7 +7,7 @@ Add the following dependency in Cargo.toml
 
 ```
 [dependencies]
-td-client = { version = "0.1", git = "https://github.com/komamitsu/td-client-rust.git" }
+td-client = "0.1"
 ```
 
 ## Usage
@@ -15,13 +15,13 @@ td-client = { version = "0.1", git = "https://github.com/komamitsu/td-client-rus
 
 First, add this line to your crate root
 
-```
+```rust
 extern crate td_client;
 ```
 
 Next, set up a td-client with your API key for Treasure Data
 
-```
+```rust
 use td_client::client::*;
 use td_client::modle::*;
 
@@ -30,7 +30,7 @@ let client = Client::new("your API key");
 
 ### Manipulate Database metadata
 
-```
+```rust
 client.create_database("my_database").unwrap();
 println!("{:?}", client.databases().unwrap());
 client.delete_database("unused_database").unwrap();
@@ -38,7 +38,7 @@ client.delete_database("unused_database").unwrap();
 
 ### Manipulate Table metadata
 
-```
+```rust
 client.create_table("my_database", "my_table").unwrap();
 println!("{:?}", client.tables("my_database").unwrap());
 client.swap_table("my_database", "my_table", "my_temp_table").unwrap();
@@ -48,7 +48,7 @@ client.delete_table("my_database", "unused_table").unwrap();
 
 ### Import data to table
 
-```
+```rust
 // Import msgpack gzipped file
 client.import_msgpack_gz_file_to_table("my_database", "my_table",
                         "/tmp/2016-08-01.msgpack.gz", None).unwrap();
@@ -74,7 +74,7 @@ client.import_msgpack_gz_file_to_table("my_database", "my_table",
 
 ### Information of jobs
 
-```
+```rust
 // List up jobs
 println!("{:?}", client.jobs(Some(JobStatusOption::Success), None, None).unwrap());
 
@@ -87,7 +87,7 @@ println!("{:?}", client.job_status(1234567).unwrap());
 
 ### Issue a query
 
-```
+```rust
 // Issue a query
 let job_id = client.issue_job(
 	QueryType::Presto, "sample_datasets",
