@@ -7,7 +7,7 @@ homepage = "https://github.com/komamitsu/td-client-rust"
 repository = "https://github.com/komamitsu/td-client-rust"
 readme = "README.md"
 license = "Apache-2.0"
-keywords = ["Treasure Data"]
+keywords = ["TreasureData"]
 
 [dependencies]
 log = "*"
