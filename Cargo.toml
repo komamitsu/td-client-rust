@@ -2,6 +2,12 @@
 name = "td-client"
 version = "0.1.0"
 authors = ["Mitsunori Komatsu <komamitsu@gmail.com>"]
+description = "Rust Client Library for Treasure Data"
+homepage = "https://github.com/komamitsu/td-client-rust"
+repository = "https://github.com/komamitsu/td-client-rust"
+readme = "README.md"
+license = "Apache-2.0"
+keywords = ["Treasure Data"]
 
 [dependencies]
 log = "*"
