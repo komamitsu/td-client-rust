@@ -7,7 +7,6 @@ extern crate regex;
 extern crate rmp as msgpack;
 extern crate rustc_serialize;
 extern crate tempdir;
-extern crate time;
 
 pub mod model;
 pub mod error;
