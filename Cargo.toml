@@ -17,5 +17,4 @@ rmp = "0.7"
 flate2 = { version = "0.2", features = ["zlib"], default-features = false }
 regex = "0.1"
 tempdir = "0.3"
-time = "0.1"
 chrono = { version = "0.2", features = ["rustc-serialize"] }
