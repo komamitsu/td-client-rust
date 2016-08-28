@@ -23,7 +23,8 @@ use error::*;
 const DEFAULT_API_ENDPOINT: &'static str = "https://api.treasuredata.com";
 const DEFAULT_API_IMPORT_ENDPOINT: &'static str = "https://api-import.treasuredata.com";
 
-pub struct Client {
+pub struct Client <R: RequestExecutor> {
+    request_exec: R,
     pub apikey: String,
     pub endpoint: String,
     pub import_endpoint: String,
@@ -46,9 +47,64 @@ pub enum JobStatusOption {
     Error
 }
 
-impl Client {
-    pub fn new(apikey: &str) -> Client {
+pub trait RequestExecutor {
+    fn get_response(&self, request_builder: RequestBuilder)
+        -> Result<Response, TreasureDataError>;
+}
+
+pub struct DefaultRequestExecutor {
+    apikey: String
+}
+
+impl DefaultRequestExecutor {
+    pub fn new(apikey: &str) -> Self {
+        DefaultRequestExecutor {
+            apikey: apikey.to_string()
+        }
+    }
+}
+
+impl RequestExecutor for DefaultRequestExecutor {
+    fn get_response(&self, request_builder: RequestBuilder)
+        -> Result<Response, TreasureDataError> {
+
+        let mut res =
+            try!(
+                request_builder.
+                header(Authorization(format!("TD1 {}", self.apikey).as_str().to_owned())).
+                send()
+            );
+        match res.status {
+            ::hyper::status::StatusCode::Ok => {
+                Ok(res)
+            },
+            _ => {
+                let mut s = String::new();
+                try!(res.read_to_string(&mut s));
+                Err(TreasureDataError::ApiError(res.status, s))
+            }
+        }
+    }
+}
+
+impl Client <DefaultRequestExecutor> {
+    pub fn new(apikey: &str) -> Client<DefaultRequestExecutor> {
         Client {
+            request_exec: DefaultRequestExecutor::new(apikey),
+            apikey: apikey.to_string(),
+            endpoint: DEFAULT_API_ENDPOINT.to_string(),
+            import_endpoint: DEFAULT_API_IMPORT_ENDPOINT.to_string(),
+            http_client: ::hyper::Client::new()
+        }
+    }
+}
+
+impl <R> Client <R> where R: RequestExecutor {
+    pub fn new_with_request_executor<RR>(apikey: &str, request_exec: RR) -> Client<RR>
+        where RR: RequestExecutor {
+
+        Client {
+            request_exec: request_exec,
             apikey: apikey.to_string(),
             endpoint: DEFAULT_API_ENDPOINT.to_string(),
             import_endpoint: DEFAULT_API_IMPORT_ENDPOINT.to_string(),
@@ -77,22 +133,7 @@ impl Client {
 
     fn get_response(&self, request_builder: RequestBuilder)
                     -> Result<Response, TreasureDataError> {
-        let mut res =
-            try!(
-                request_builder.
-                header(Authorization(format!("TD1 {}", self.apikey).as_str().to_owned())).
-                send()
-            );
-        match res.status {
-            ::hyper::status::StatusCode::Ok => {
-                Ok(res)
-            },
-            _ => {
-                let mut s = String::new();
-                try!(res.read_to_string(&mut s));
-                Err(TreasureDataError::ApiError(res.status, s))
-            }
-        }
+        self.request_exec.get_response(request_builder)
     }
 
     fn get_response_as_string(&self, request_builder: RequestBuilder)
