@@ -525,7 +525,16 @@ impl <R> Client <R> where R: RequestExecutor {
 
 #[cfg(test)]
 mod tests {
+    use std::io::{self, Cursor, Read, Write};
+    use std::time::Duration;
+    use std::net::{SocketAddr, Shutdown};
+    use hyper::Url;
+    use hyper::net::NetworkStream;
+    use hyper::client::{RequestBuilder, Response};
+
+    use super::RequestExecutor;
     use client::Client;
+    use error::TreasureDataError;
 
     #[test]
     fn new() {
@@ -543,5 +552,89 @@ mod tests {
         assert_eq!("http://bar.com", client.endpoint);
         client.endpoint("baz.com");
         assert_eq!("https://baz.com", client.endpoint);
+    }
+
+    struct MockStream {
+        request: Vec<u8>,
+        response: Cursor<Vec<u8>>
+    }
+
+    impl MockStream {
+        fn new(response: Vec<u8>) -> Self {
+            MockStream {
+                request: vec![],
+                response: Cursor::new(response)
+            }
+        }
+    }
+
+    impl Read for MockStream {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            self.response.read(buf)
+        }
+    }
+
+    impl Write for MockStream {
+        fn write(&mut self, msg: &[u8]) -> io::Result<usize> {
+            self.request = msg.to_vec();
+            Ok(msg.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl NetworkStream for MockStream {
+        fn peer_addr(&mut self) -> io::Result<SocketAddr> {
+            Ok("127.0.0.1:55555".parse().unwrap())
+        }
+
+        fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
+            Ok(())
+        }
+
+        fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
+            Ok(())
+        }
+
+        fn close(&mut self, _: Shutdown) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    struct MockRequestExecutor {
+        response: String
+    }
+
+    impl MockRequestExecutor {
+        fn new(response: &str) -> Self {
+            MockRequestExecutor {
+                response: response.to_string()
+            }
+        }
+    }
+
+    impl RequestExecutor for MockRequestExecutor {
+        fn get_response(&self, _: RequestBuilder)
+            -> Result<Response, TreasureDataError> {
+                Ok(
+                    Response::new(
+                        Url::parse("https://localhost:55555/foo/bar").unwrap(),
+                        Box::new(
+                            MockStream::new(self.response.as_str().as_bytes().clone().to_vec())
+                        )
+                    ).unwrap()
+                )
+        }
+    }
+
+    #[test]
+    fn databases() {
+        // TODO: Refactoring
+        let request_exec = MockRequestExecutor::new("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 16\r\n\r\n{\"databases\":[]}");
+        let client = Client::<MockRequestExecutor>::new_with_request_executor("1234abcd", request_exec);
+        let databases = client.databases().unwrap();
+        assert_eq!(0, databases.len());
     }
 }
