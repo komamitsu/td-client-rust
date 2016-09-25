@@ -536,16 +536,18 @@ mod tests {
     use client::Client;
     use error::TreasureDataError;
 
+    const APIKEY : &'static str = "1234abcd";
+
     #[test]
     fn new() {
-        let client = Client::new("1234abcd");
-        assert_eq!("1234abcd", client.apikey);
+        let client = Client::new(APIKEY);
+        assert_eq!(APIKEY, client.apikey);
         assert_eq!("https://api.treasuredata.com", client.endpoint);
     }
 
     #[test]
     fn endpoint() {
-        let mut client = Client::new("1234abcd");
+        let mut client = Client::new(APIKEY);
         client.endpoint("https://foo.com");
         assert_eq!("https://foo.com", client.endpoint);
         client.endpoint("http://bar.com");
@@ -608,9 +610,16 @@ mod tests {
     }
 
     impl MockRequestExecutor {
-        fn new(response: &str) -> Self {
-            MockRequestExecutor {
-                response: response.to_string()
+        fn new(response_header: Vec<&str>, response_body: &str) -> Self {
+            let content_length = format!("Content-Length: {:?}", response_body.len());
+            {
+                let mut response = response_header.clone();
+                response.push(content_length.as_str());
+                response.push("");
+                response.push(response_body);
+                MockRequestExecutor {
+                    response: response.join("\r\n").to_string()
+                }
             }
         }
     }
@@ -631,10 +640,44 @@ mod tests {
 
     #[test]
     fn databases() {
-        // TODO: Refactoring
-        let request_exec = MockRequestExecutor::new("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 16\r\n\r\n{\"databases\":[]}");
-        let client = Client::<MockRequestExecutor>::new_with_request_executor("1234abcd", request_exec);
-        let databases = client.databases().unwrap();
-        assert_eq!(0, databases.len());
+        {
+            let request_exec = MockRequestExecutor::new(
+                vec!["HTTP/1.1 200 OK",
+                     "Content-Type: application/json"],
+                     "{\"databases\":[]}");
+            let client = Client::<MockRequestExecutor>::new_with_request_executor(APIKEY, request_exec);
+            let databases = client.databases().unwrap();
+            assert_eq!(0, databases.len());
+        }
+
+        {
+            let request_exec = MockRequestExecutor::new(
+                vec!["HTTP/1.1 200 OK",
+                     "Content-Type: application/json"],
+                     r#"{"databases":[
+                       {"name":"db0", "count":42, "created_at":"2016-01-01 00:00:00 UTC",
+                        "updated_at":"2016-01-01 01:01:01 UTC", "permission":"query_only"},
+                       {"name":"db1", "count":0, "created_at":"2016-12-31 23:59:59 UTC",
+                        "updated_at":"2016-12-31 23:59:59 UTC", "permission":"administrator"}
+                     ]}"#
+            );
+            let client = Client::<MockRequestExecutor>::new_with_request_executor(APIKEY, request_exec);
+            let databases = client.databases().unwrap();
+            assert_eq!(2, databases.len());
+
+            let db0 = databases.get(0).unwrap();
+            assert_eq!("db0", db0.name);
+            assert_eq!(42, db0.count);
+            assert_eq!("2016-01-01 00:00:00 UTC", db0.created_at.to_string());
+            assert_eq!("2016-01-01 01:01:01 UTC", db0.updated_at.to_string());
+            assert_eq!("query_only", db0.permission);
+
+            let db1 = databases.get(1).unwrap();
+            assert_eq!("db1", db1.name);
+            assert_eq!(0, db1.count);
+            assert_eq!("2016-12-31 23:59:59 UTC", db1.created_at.to_string());
+            assert_eq!("2016-12-31 23:59:59 UTC", db1.updated_at.to_string());
+            assert_eq!("administrator", db1.permission);
+        }
     }
 }
