@@ -557,14 +557,12 @@ mod tests {
     }
 
     struct MockStream {
-        request: Vec<u8>,
         response: Cursor<Vec<u8>>
     }
 
     impl MockStream {
         fn new(response: Vec<u8>) -> Self {
             MockStream {
-                request: vec![],
                 response: Cursor::new(response)
             }
         }
@@ -578,7 +576,6 @@ mod tests {
 
     impl Write for MockStream {
         fn write(&mut self, msg: &[u8]) -> io::Result<usize> {
-            self.request = msg.to_vec();
             Ok(msg.len())
         }
 
@@ -645,7 +642,8 @@ mod tests {
                 vec!["HTTP/1.1 200 OK",
                      "Content-Type: application/json"],
                      "{\"databases\":[]}");
-            let client = Client::<MockRequestExecutor>::new_with_request_executor(APIKEY, request_exec);
+            let client = Client::<MockRequestExecutor>::
+                            new_with_request_executor(APIKEY, request_exec);
             let databases = client.databases().unwrap();
             assert_eq!(0, databases.len());
         }
@@ -661,7 +659,8 @@ mod tests {
                         "updated_at":"2016-12-31 23:59:59 UTC", "permission":"administrator"}
                      ]}"#
             );
-            let client = Client::<MockRequestExecutor>::new_with_request_executor(APIKEY, request_exec);
+            let client = Client::<MockRequestExecutor>::
+                            new_with_request_executor(APIKEY, request_exec);
             let databases = client.databases().unwrap();
             assert_eq!(2, databases.len());
 
