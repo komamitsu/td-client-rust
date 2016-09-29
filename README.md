@@ -23,7 +23,7 @@ Next, set up a td-client with your API key for Treasure Data
 
 ```rust
 use td_client::client::*;
-use td_client::modle::*;
+use td_client::model::*;
 
 let client = Client::new("your API key");
 ```
