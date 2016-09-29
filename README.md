@@ -1,4 +1,5 @@
 # td-client-rust
+[<img src="https://travis-ci.org/komamitsu/td-client-rust.svg?branch=master"/>](https://travis-ci.org/komamitsu/td-client-rust)
 Rust Client Library for Treasure Data
 
 ## Install
