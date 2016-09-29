@@ -2,7 +2,6 @@ use std::error::Error;
 use std::fmt;
 use std::fs::File;
 use std::io;
-use std::io::prelude::*;
 use flate2::Compression;
 use flate2::write::GzEncoder;
 use msgpack::encode::*;

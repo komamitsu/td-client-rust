@@ -23,7 +23,8 @@ use error::*;
 const DEFAULT_API_ENDPOINT: &'static str = "https://api.treasuredata.com";
 const DEFAULT_API_IMPORT_ENDPOINT: &'static str = "https://api-import.treasuredata.com";
 
-pub struct Client {
+pub struct Client <R: RequestExecutor> {
+    request_exec: R,
     pub apikey: String,
     pub endpoint: String,
     pub import_endpoint: String,
@@ -46,9 +47,64 @@ pub enum JobStatusOption {
     Error
 }
 
-impl Client {
-    pub fn new(apikey: &str) -> Client {
+pub trait RequestExecutor {
+    fn get_response(&self, request_builder: RequestBuilder)
+        -> Result<Response, TreasureDataError>;
+}
+
+pub struct DefaultRequestExecutor {
+    apikey: String
+}
+
+impl DefaultRequestExecutor {
+    pub fn new(apikey: &str) -> Self {
+        DefaultRequestExecutor {
+            apikey: apikey.to_string()
+        }
+    }
+}
+
+impl RequestExecutor for DefaultRequestExecutor {
+    fn get_response(&self, request_builder: RequestBuilder)
+        -> Result<Response, TreasureDataError> {
+
+        let mut res =
+            try!(
+                request_builder.
+                header(Authorization(format!("TD1 {}", self.apikey).as_str().to_owned())).
+                send()
+            );
+        match res.status {
+            ::hyper::status::StatusCode::Ok => {
+                Ok(res)
+            },
+            _ => {
+                let mut s = String::new();
+                try!(res.read_to_string(&mut s));
+                Err(TreasureDataError::ApiError(res.status, s))
+            }
+        }
+    }
+}
+
+impl Client <DefaultRequestExecutor> {
+    pub fn new(apikey: &str) -> Client<DefaultRequestExecutor> {
         Client {
+            request_exec: DefaultRequestExecutor::new(apikey),
+            apikey: apikey.to_string(),
+            endpoint: DEFAULT_API_ENDPOINT.to_string(),
+            import_endpoint: DEFAULT_API_IMPORT_ENDPOINT.to_string(),
+            http_client: ::hyper::Client::new()
+        }
+    }
+}
+
+impl <R> Client <R> where R: RequestExecutor {
+    pub fn new_with_request_executor<RR>(apikey: &str, request_exec: RR) -> Client<RR>
+        where RR: RequestExecutor {
+
+        Client {
+            request_exec: request_exec,
             apikey: apikey.to_string(),
             endpoint: DEFAULT_API_ENDPOINT.to_string(),
             import_endpoint: DEFAULT_API_IMPORT_ENDPOINT.to_string(),
@@ -77,22 +133,7 @@ impl Client {
 
     fn get_response(&self, request_builder: RequestBuilder)
                     -> Result<Response, TreasureDataError> {
-        let mut res =
-            try!(
-                request_builder.
-                header(Authorization(format!("TD1 {}", self.apikey).as_str().to_owned())).
-                send()
-            );
-        match res.status {
-            ::hyper::status::StatusCode::Ok => {
-                Ok(res)
-            },
-            _ => {
-                let mut s = String::new();
-                try!(res.read_to_string(&mut s));
-                Err(TreasureDataError::ApiError(res.status, s))
-            }
-        }
+        self.request_exec.get_response(request_builder)
     }
 
     fn get_response_as_string(&self, request_builder: RequestBuilder)
@@ -484,23 +525,158 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
+    use std::io::{self, Cursor, Read, Write};
+    use std::time::Duration;
+    use std::net::{SocketAddr, Shutdown};
+    use hyper::Url;
+    use hyper::net::NetworkStream;
+    use hyper::client::{RequestBuilder, Response};
+
+    use super::RequestExecutor;
     use client::Client;
+    use error::TreasureDataError;
+
+    const APIKEY : &'static str = "1234abcd";
 
     #[test]
     fn new() {
-        let client = Client::new("1234abcd");
-        assert_eq!("1234abcd", client.apikey);
+        let client = Client::new(APIKEY);
+        assert_eq!(APIKEY, client.apikey);
         assert_eq!("https://api.treasuredata.com", client.endpoint);
     }
 
     #[test]
     fn endpoint() {
-        let mut client = Client::new("1234abcd");
+        let mut client = Client::new(APIKEY);
         client.endpoint("https://foo.com");
         assert_eq!("https://foo.com", client.endpoint);
         client.endpoint("http://bar.com");
         assert_eq!("http://bar.com", client.endpoint);
         client.endpoint("baz.com");
         assert_eq!("https://baz.com", client.endpoint);
+    }
+
+    struct MockStream {
+        response: Cursor<Vec<u8>>
+    }
+
+    impl MockStream {
+        fn new(response: Vec<u8>) -> Self {
+            MockStream {
+                response: Cursor::new(response)
+            }
+        }
+    }
+
+    impl Read for MockStream {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            self.response.read(buf)
+        }
+    }
+
+    impl Write for MockStream {
+        fn write(&mut self, msg: &[u8]) -> io::Result<usize> {
+            Ok(msg.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl NetworkStream for MockStream {
+        fn peer_addr(&mut self) -> io::Result<SocketAddr> {
+            Ok("127.0.0.1:55555".parse().unwrap())
+        }
+
+        fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
+            Ok(())
+        }
+
+        fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
+            Ok(())
+        }
+
+        fn close(&mut self, _: Shutdown) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    struct MockRequestExecutor {
+        response: String
+    }
+
+    impl MockRequestExecutor {
+        fn new(response_header: Vec<&str>, response_body: &str) -> Self {
+            let content_length = format!("Content-Length: {:?}", response_body.len());
+            {
+                let mut response = response_header.clone();
+                response.push(content_length.as_str());
+                response.push("");
+                response.push(response_body);
+                MockRequestExecutor {
+                    response: response.join("\r\n").to_string()
+                }
+            }
+        }
+    }
+
+    impl RequestExecutor for MockRequestExecutor {
+        fn get_response(&self, _: RequestBuilder)
+            -> Result<Response, TreasureDataError> {
+                Ok(
+                    Response::new(
+                        Url::parse("https://localhost:55555/foo/bar").unwrap(),
+                        Box::new(
+                            MockStream::new(self.response.as_str().as_bytes().clone().to_vec())
+                        )
+                    ).unwrap()
+                )
+        }
+    }
+
+    #[test]
+    fn databases() {
+        {
+            let request_exec = MockRequestExecutor::new(
+                vec!["HTTP/1.1 200 OK",
+                     "Content-Type: application/json"],
+                     "{\"databases\":[]}");
+            let client = Client::<MockRequestExecutor>::
+                            new_with_request_executor(APIKEY, request_exec);
+            let databases = client.databases().unwrap();
+            assert_eq!(0, databases.len());
+        }
+
+        {
+            let request_exec = MockRequestExecutor::new(
+                vec!["HTTP/1.1 200 OK",
+                     "Content-Type: application/json"],
+                     r#"{"databases":[
+                       {"name":"db0", "count":42, "created_at":"2016-01-01 00:00:00 UTC",
+                        "updated_at":"2016-01-01 01:01:01 UTC", "permission":"query_only"},
+                       {"name":"db1", "count":0, "created_at":"2016-12-31 23:59:59 UTC",
+                        "updated_at":"2016-12-31 23:59:59 UTC", "permission":"administrator"}
+                     ]}"#
+            );
+            let client = Client::<MockRequestExecutor>::
+                            new_with_request_executor(APIKEY, request_exec);
+            let databases = client.databases().unwrap();
+            assert_eq!(2, databases.len());
+
+            let db0 = databases.get(0).unwrap();
+            assert_eq!("db0", db0.name);
+            assert_eq!(42, db0.count);
+            assert_eq!("2016-01-01 00:00:00 UTC", db0.created_at.to_string());
+            assert_eq!("2016-01-01 01:01:01 UTC", db0.updated_at.to_string());
+            assert_eq!("query_only", db0.permission);
+
+            let db1 = databases.get(1).unwrap();
+            assert_eq!("db1", db1.name);
+            assert_eq!(0, db1.count);
+            assert_eq!("2016-12-31 23:59:59 UTC", db1.created_at.to_string());
+            assert_eq!("2016-12-31 23:59:59 UTC", db1.updated_at.to_string());
+            assert_eq!("administrator", db1.permission);
+        }
     }
 }
