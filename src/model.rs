@@ -2,6 +2,8 @@ use std::str::FromStr;
 use rustc_serialize::*;
 use chrono::*;
 
+use error::*;
+
 #[derive(PartialEq, Eq, Debug, RustcEncodable)]
 pub struct TimeStamp(DateTime<UTC>);
 
@@ -133,6 +135,21 @@ impl ToString for QueryType {
             &QueryType::Hive => "hive".to_string(),
             &QueryType::Presto => "presto".to_string(),
             &QueryType::Pig => "pig".to_string()
+        }
+    }
+}
+
+impl FromStr for QueryType {
+    type Err = InvalidArgument;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "hive" => Ok(QueryType::Hive),
+            "presto" => Ok(QueryType::Presto),
+            "pig" => Ok(QueryType::Pig),
+            _ => Err(InvalidArgument {
+                key: "query_type".to_string(),
+                value: s.to_string()
+            })
         }
     }
 }

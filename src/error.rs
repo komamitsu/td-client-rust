@@ -2,6 +2,28 @@ use std::error::Error;
 use std::fmt;
 
 #[derive(Debug)]
+pub struct InvalidArgument {
+    pub key: String,
+    pub value: String
+}
+
+impl fmt::Display for InvalidArgument {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}. key:{}, value:{}", self.description(), self.key, self.value)
+    }
+}
+
+impl Error for InvalidArgument {
+    fn description(&self) -> &str {
+        "invalid argument"
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        None
+    }
+}
+
+#[derive(Debug)]
 pub enum TreasureDataError {
     JsonDecodeError(::rustc_serialize::json::DecoderError),
     JsonParseError(::rustc_serialize::json::ParserError),
@@ -10,6 +32,7 @@ pub enum TreasureDataError {
     TimeStampParseError(::chrono::ParseError),
     HttpError(::hyper::error::Error),
     ApiError(::hyper::status::StatusCode, String),
+    InvalidArgumentError(InvalidArgument),
     IoError(::std::io::Error)
 }
 
@@ -34,6 +57,12 @@ impl From<::msgpack::decode::value::Error> for TreasureDataError {
 impl From<::hyper::error::Error> for TreasureDataError {
     fn from(err: ::hyper::error::Error) -> TreasureDataError {
         TreasureDataError::HttpError(err)
+    }
+}
+
+impl From<InvalidArgument> for TreasureDataError {
+    fn from(err: InvalidArgument) -> TreasureDataError {
+        TreasureDataError::InvalidArgumentError(err)
     }
 }
 
@@ -67,6 +96,7 @@ impl Error for TreasureDataError {
             TreasureDataError::HttpError(ref x) => x.description(),
             TreasureDataError::ApiError(..) =>
                 "recieved unexpected status code",
+            TreasureDataError::InvalidArgumentError(ref x) => x.description(),
             TreasureDataError::IoError(ref x) => x.description()
         }
     }
@@ -80,6 +110,7 @@ impl Error for TreasureDataError {
             TreasureDataError::TimeStampParseError(ref x) => Some(x),
             TreasureDataError::HttpError(ref x) => Some(x),
             TreasureDataError::ApiError(..) => None,
+            TreasureDataError::InvalidArgumentError(ref x) => Some(x),
             TreasureDataError::IoError(ref x) => Some(x)
         }
     }
