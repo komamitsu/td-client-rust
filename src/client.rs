@@ -12,7 +12,6 @@ use hyper::client::response::Response;
 use hyper::header::{Authorization, ContentType, ContentLength};
 use hyper::mime::{Mime, TopLevel, SubLevel};
 use msgpack::decode::*;
-use msgpack::value::*;
 use regex::Regex;
 use rustc_serialize::*;
 use rustc_serialize::json::{DecoderError, Json, ToJson};
@@ -499,8 +498,10 @@ impl <R> Client <R> where R: RequestExecutor {
 
         loop {
             match ::msgpack::decode::read_value(&mut d) {
-                Ok(Value::Array(xs)) => f(xs),
-                Ok(unexpected) => return Err(TreasureDataError::MsgpackUnexpectedValueError(unexpected)),
+                Ok(::msgpack::value::Value::Array(xs)) =>
+                    f(xs.into_iter().map(|x| Value::from(x)).collect()),
+                Ok(unexpected) =>
+                    return Err(TreasureDataError::MsgpackUnexpectedValueError(unexpected)),
                 // TODO: Should handle it in a smarter way?
                 Err(value::Error::InvalidMarkerRead(ReadError::UnexpectedEOF)) => break,
                 Err(err) => try!(Err(err))
