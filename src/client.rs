@@ -16,8 +16,9 @@ use regex::Regex;
 use rustc_serialize::*;
 use rustc_serialize::json::{DecoderError, Json, ToJson};
 
-use model::*;
 use error::*;
+use model::*;
+use value::*;
 
 const DEFAULT_API_ENDPOINT: &'static str = "https://api.treasuredata.com";
 const DEFAULT_API_IMPORT_ENDPOINT: &'static str = "https://api-import.treasuredata.com";
