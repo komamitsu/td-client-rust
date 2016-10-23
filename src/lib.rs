@@ -8,8 +8,9 @@ extern crate rmp as msgpack;
 extern crate rustc_serialize;
 extern crate tempdir;
 
-pub mod model;
 pub mod error;
+pub mod model;
+pub mod value;
 #[macro_use]
 mod json_helper;
 pub mod client;
