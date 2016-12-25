@@ -9,7 +9,7 @@ Add the following dependency in Cargo.toml
 
 ```
 [dependencies]
-td-client = "0.1"
+td-client = "0.2"
 ```
 
 ## Usage
