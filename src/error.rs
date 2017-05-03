@@ -27,8 +27,8 @@ impl Error for InvalidArgument {
 pub enum TreasureDataError {
     JsonDecodeError(::rustc_serialize::json::DecoderError),
     JsonParseError(::rustc_serialize::json::ParserError),
-    MsgpackDecodeError(::msgpack::decode::value::Error),
-    MsgpackUnexpectedValueError(::msgpack::decode::value::Value),
+    MsgpackDecodeError(::rmpv::decode::Error),
+    MsgpackUnexpectedValueError(::rmpv::Value),
     TimeStampParseError(::chrono::ParseError),
     HttpError(::hyper::error::Error),
     ApiError(::hyper::status::StatusCode, String),
@@ -48,8 +48,8 @@ impl From<::rustc_serialize::json::ParserError> for TreasureDataError {
     }
 }
 
-impl From<::msgpack::decode::value::Error> for TreasureDataError {
-    fn from(err: ::msgpack::decode::value::Error) -> TreasureDataError {
+impl From<::rmpv::decode::Error> for TreasureDataError {
+    fn from(err: ::rmpv::decode::Error) -> TreasureDataError {
         TreasureDataError::MsgpackDecodeError(err)
     }
 }

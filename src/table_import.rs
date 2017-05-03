@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io;
 use flate2::Compression;
 use flate2::write::GzEncoder;
-use msgpack::encode::*;
+use rmp::encode::*;
 use tempdir::TempDir;
 
 pub struct TableImportWritableChunk {
@@ -43,8 +43,7 @@ pub enum TableImportChunkError {
     IOError(io::Error),
     UnmatchElementNums(UnmatchElementNumsError),
     UnexpectedError(String),
-    MsgpackValueWriteError(ValueWriteError),
-    MsgpackFixedValueWriteError(FixedValueWriteError)
+    MsgpackValueWriteError(ValueWriteError)
 }
 
 impl From<UnmatchElementNumsError> for TableImportChunkError {
@@ -56,12 +55,6 @@ impl From<UnmatchElementNumsError> for TableImportChunkError {
 impl From<ValueWriteError> for TableImportChunkError {
     fn from(err: ValueWriteError) -> Self {
         TableImportChunkError::MsgpackValueWriteError(err)
-    }
-}
-
-impl From<FixedValueWriteError> for TableImportChunkError {
-    fn from(err: FixedValueWriteError) -> Self {
-        TableImportChunkError::MsgpackFixedValueWriteError(err)
     }
 }
 
@@ -77,7 +70,6 @@ impl fmt::Display for TableImportChunkError {
             TableImportChunkError::IOError(ref x) => write!(f, "{}", x),
             TableImportChunkError::UnmatchElementNums(ref x) => write!(f, "{}", x),
             TableImportChunkError::UnexpectedError(ref x) => write!(f, "{}", x),
-            TableImportChunkError::MsgpackFixedValueWriteError(ref x) => write!(f, "{}", x),
             TableImportChunkError::MsgpackValueWriteError(ref x) => write!(f, "{}", x)
         }
     }
@@ -89,7 +81,6 @@ impl Error for TableImportChunkError {
             TableImportChunkError::IOError(ref x) => x.description(),
             TableImportChunkError::UnmatchElementNums(ref x) => x.description(),
             TableImportChunkError::UnexpectedError(ref x) => x,
-            TableImportChunkError::MsgpackFixedValueWriteError(ref x) => x.description(),
             TableImportChunkError::MsgpackValueWriteError(ref x) => x.description()
         }
     }
@@ -260,7 +251,7 @@ impl TableImportWritableChunk {
 
     pub fn write_key_and_sint_eff(&mut self, key: &str, val: i64) -> Result<(), TableImportChunkError> {
         try!(write_str(&mut self.write, key));
-        try!(write_sint_eff(&mut self.write, val));
+        try!(write_sint(&mut self.write, val));
         try!(self.incr_elms_in_row());
         Ok(())
     }

@@ -3,6 +3,7 @@ use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufWriter;
+use std::io::ErrorKind;
 use std::str::FromStr;
 use std::time::Duration;
 use std::thread;
@@ -11,7 +12,6 @@ use hyper::client::{RequestBuilder, Body};
 use hyper::client::response::Response;
 use hyper::header::{Authorization, ContentType, ContentLength};
 use hyper::mime::{Mime, TopLevel, SubLevel};
-use msgpack::decode::*;
 use regex::Regex;
 use rustc_serialize::*;
 use rustc_serialize::json::{DecoderError, Json, ToJson};
@@ -498,18 +498,19 @@ impl <R> Client <R> where R: RequestExecutor {
         let mut d = try!(GzDecoder::new(response));
 
         loop {
-            match ::msgpack::decode::read_value(&mut d) {
-                Ok(::msgpack::value::Value::Array(xs)) =>
+            match ::rmpv::decode::read_value(&mut d) {
+                Ok(::rmpv::Value::Array(xs)) =>
                     f(xs.into_iter().map(|x| Value::from(x)).collect()),
                 Ok(unexpected) =>
                     return Err(TreasureDataError::MsgpackUnexpectedValueError(unexpected)),
-                // TODO: Should handle it in a smarter way?
-                Err(value::Error::InvalidMarkerRead(ReadError::UnexpectedEOF)) => break,
+                Err(::rmpv::decode::Error::InvalidMarkerRead(err)) =>
+                    match err.kind() {
+                        ErrorKind::UnexpectedEof => return Ok(()),
+                        _ => try!(Err(err))
+                    },
                 Err(err) => try!(Err(err))
             }
         }
-
-        Ok(())
     }
 
     pub fn kill_job(&self, job_id: u64)

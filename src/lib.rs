@@ -4,7 +4,8 @@ extern crate hyper;
 #[macro_use]
 extern crate log;
 extern crate regex;
-extern crate rmp as msgpack;
+extern crate rmp;
+extern crate rmpv;
 extern crate rustc_serialize;
 extern crate tempdir;
 

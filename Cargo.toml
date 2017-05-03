@@ -13,7 +13,8 @@ keywords = ["TreasureData"]
 log = "0.3"
 hyper = "0.9"
 rustc-serialize = "0.3"
-rmp = "0.7"
+rmp = "0.8"
+rmpv = "0.4"
 flate2 = { version = "0.2", features = ["zlib"], default-features = false }
 regex = "0.1"
 tempdir = "0.3"
