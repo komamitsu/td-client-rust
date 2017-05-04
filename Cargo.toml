@@ -12,7 +12,7 @@ keywords = ["TreasureData"]
 [dependencies]
 log = "0.3"
 hyper = "0.10"
-hyper-native-tls = "0.2.2"
+hyper-native-tls = "0.2"
 rustc-serialize = "0.3"
 rmp = "0.8"
 rmpv = "0.4"
