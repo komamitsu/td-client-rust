@@ -23,36 +23,30 @@ pub enum Value {
     Ext(i8, Vec<u8>),
 }
 
-impl From<::msgpack::value::Value> for Value {
-    fn from(src: ::msgpack::value::Value) -> Value {
+impl From<::rmpv::Value> for Value {
+    fn from(src: ::rmpv::Value) -> Value {
         match src {
-            ::msgpack::value::Value::Nil => Value::Nil,
-            ::msgpack::value::Value::Boolean(x) => Value::Boolean(x),
-            ::msgpack::value::Value::Integer(x) => {
-                match x {
-                    ::msgpack::value::Integer::U64(i) =>
-                        Value::Integer(Integer::U64(i)),
-                    ::msgpack::value::Integer::I64(i) =>
-                        Value::Integer(Integer::I64(i))
+            ::rmpv::Value::Nil => Value::Nil,
+            ::rmpv::Value::Boolean(x) => Value::Boolean(x),
+            ::rmpv::Value::Integer(x) => {
+                if x.is_i64() {
+                    Value::Integer(Integer::I64(x.as_i64().unwrap()))
+                }
+                else {
+                    Value::Integer(Integer::U64(x.as_u64().unwrap()))
                 }
             },
-            ::msgpack::value::Value::Float(x)=> {
-                match x {
-                    ::msgpack::value::Float::F32(f) =>
-                        Value::Float(Float::F32(f)),
-                    ::msgpack::value::Float::F64(f) =>
-                        Value::Float(Float::F64(f))
-                }
-            },
-            ::msgpack::value::Value::String(x) => Value::String(x),
-            ::msgpack::value::Value::Binary(x) => Value::Binary(x),
-            ::msgpack::value::Value::Array(xs) =>
+            ::rmpv::Value::F32(x)=> Value::Float(Float::F32(x)),
+            ::rmpv::Value::F64(x)=> Value::Float(Float::F64(x)),
+            ::rmpv::Value::String(x) => Value::String(x.into_str().unwrap()),
+            ::rmpv::Value::Binary(x) => Value::Binary(x),
+            ::rmpv::Value::Array(xs) =>
                 Value::Array(xs.into_iter().map(|x| Value::from(x)).collect()),
-            ::msgpack::value::Value::Map(xs) =>
+            ::rmpv::Value::Map(xs) =>
                 Value::Map(xs.into_iter().map(|(k, v)| {
                     (Value::from(k), Value::from(v))
                 }).collect()),
-            ::msgpack::value::Value::Ext(i, x) => Value::Ext(i, x)
+            ::rmpv::Value::Ext(i, x) => Value::Ext(i, x)
         }
     }
 }
