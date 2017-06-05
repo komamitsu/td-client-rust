@@ -10,7 +10,9 @@ pub struct TimeStamp(DateTime<UTC>);
 impl FromStr for TimeStamp {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let datetime = try!(UTC.datetime_from_str(s, "%Y-%m-%d %H:%M:%S UTC"));
+        let datetime = try!(
+            s.parse::<DateTime<UTC>>()
+            .or(UTC.datetime_from_str(s, "%Y-%m-%d %H:%M:%S UTC")));
         Ok(TimeStamp(datetime))
     }
 }
