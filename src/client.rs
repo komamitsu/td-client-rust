@@ -265,6 +265,33 @@ impl <R> Client <R> where R: RequestExecutor {
         Ok(())
     }
 
+    pub fn copy_table_schema(&self, src_database_name: &str, src_table_name: &str,
+                             dst_database_name: &str, dst_table_name: &str)
+                      -> Result<(), TreasureDataError> {
+        let src_tables = try!(self.tables(src_database_name));
+        let src_table = try!(
+                src_tables.iter().find(|t| t.name == src_table_name).
+                ok_or(TreasureDataError::InvalidArgumentError(
+                        InvalidArgument {
+                            key: "src_table_name".to_string(),
+                            value: "not found".to_string()
+                        }))
+            );
+
+        let mut body = BTreeMap::new();
+        body.insert("schema".to_string(), Json::String(src_table.schema.clone()));
+        try!(
+            self.get_response_as_string(
+                self.http_client.
+                    post(format!("{}/v3/table/update-schema/{}/{}",
+                                 self.endpoint, dst_database_name, dst_table_name).as_str()).
+                    header(ContentType(Mime(TopLevel::Application, SubLevel::Json, vec![]))).
+                    body(Json::Object(body).to_string().as_str())
+            )
+        );
+        Ok(())
+    }
+
     pub fn import_msgpack_gz_to_table(&self, database_name: &str, name: &str,
                         data_len: u64, data: &mut Read, unique_id: Option<&str>)
                         -> Result<(), TreasureDataError> {
