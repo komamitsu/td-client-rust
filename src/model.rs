@@ -155,3 +155,28 @@ impl FromStr for QueryType {
         }
     }
 }
+
+#[derive(Debug, RustcDecodable, RustcEncodable)]
+pub enum SchemaType {
+    Int,
+    Long,
+    Float,
+    Double,
+    String,
+    Array(Box<SchemaType>)
+}
+
+impl ToString for SchemaType {
+    fn to_string(&self) -> String {
+        match self {
+            &SchemaType::Int => "int".to_string(),
+            &SchemaType::Long => "long".to_string(),
+            &SchemaType::Float => "float".to_string(),
+            &SchemaType::Double => "double".to_string(),
+            &SchemaType::String => "string".to_string(),
+            &SchemaType::Array(ref inner_type) =>
+                ["array<", inner_type.to_string().as_str(), ">"].concat()
+        }
+    }
+}
+

@@ -265,6 +265,33 @@ impl <R> Client <R> where R: RequestExecutor {
         Ok(())
     }
 
+    pub fn append_schema(&self, database_name: &str, table_name: &str,
+                        schemas: Vec<(&str, SchemaType)>)
+                      -> Result<(), TreasureDataError> {
+        let mut body = BTreeMap::new();
+        body.insert("schema".to_string(),
+            Json::Array(
+                schemas.iter().
+                    map(|&(name, ref schema_type)|
+                        Json::Array(
+                            vec![Json::String(name.to_string()),
+                                Json::String(schema_type.to_string())])
+                       ).collect::<Vec<Json>>()
+            )
+        );
+
+        try!(
+            self.get_response_as_string(
+                self.http_client.
+                    post(format!("{}/v3/table/append-schema/{}/{}",
+                                 self.endpoint, database_name, table_name).as_str()).
+                    header(ContentType(Mime(TopLevel::Application, SubLevel::Json, vec![]))).
+                    body(Json::Object(body).to_string().as_str())
+            )
+        );
+        Ok(())
+    }
+
     pub fn copy_table_schema(&self, src_database_name: &str, src_table_name: &str,
                              dst_database_name: &str, dst_table_name: &str)
                       -> Result<(), TreasureDataError> {
