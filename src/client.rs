@@ -266,7 +266,7 @@ impl <R> Client <R> where R: RequestExecutor {
     }
 
     pub fn append_schema(&self, database_name: &str, table_name: &str,
-                        schemas: Vec<(&str, SchemaType)>)
+                        schemas: &Vec<(&str, SchemaType)>)
                       -> Result<(), TreasureDataError> {
         let mut body = BTreeMap::new();
         body.insert("schema".to_string(),
