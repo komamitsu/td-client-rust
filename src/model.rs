@@ -124,7 +124,7 @@ pub struct Jobs {
     pub jobs: Vec<Job>
 }
 
-#[derive(Debug, RustcDecodable, RustcEncodable)]
+#[derive(Debug, Clone, RustcDecodable, RustcEncodable)]
 pub enum QueryType {
     Hive,
     Presto,
