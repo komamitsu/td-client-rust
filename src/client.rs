@@ -551,8 +551,8 @@ impl <R> Client <R> where R: RequestExecutor {
         Ok(())
     }
 
-    pub fn each_row_in_job_result(&self, job_id: u64, f: &Fn(Vec<Value>))
-        -> Result<(), TreasureDataError> {
+    pub fn each_row_in_job_result<F>(&self, job_id: u64, f: &F) -> Result<(), TreasureDataError>
+        where F: Fn(Vec<Value>) -> bool {
         let (response, _) = try!(self.job_result(job_id));
 
         let mut d = try!(GzDecoder::new(response));
@@ -560,7 +560,10 @@ impl <R> Client <R> where R: RequestExecutor {
         loop {
             match ::rmpv::decode::read_value(&mut d) {
                 Ok(::rmpv::Value::Array(xs)) =>
-                    f(xs.into_iter().map(|x| Value::from(x)).collect()),
+                    if !f(xs.into_iter().map(|x| Value::from(x)).collect()) {
+                        // Something wrong happened
+                        return Ok(())
+                    },
                 Ok(unexpected) =>
                     return Err(TreasureDataError::MsgpackUnexpectedValueError(unexpected)),
                 Err(::rmpv::decode::Error::InvalidMarkerRead(err)) =>
