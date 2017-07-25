@@ -12,8 +12,6 @@ use hyper::client::{RequestBuilder, Body};
 use hyper::client::response::Response;
 use hyper::header::{Authorization, ContentType, ContentLength};
 use hyper::mime::{Mime, TopLevel, SubLevel};
-use hyper::net::HttpsConnector;
-use hyper_native_tls::NativeTlsClient;
 use regex::Regex;
 use rustc_serialize::*;
 use rustc_serialize::json::{DecoderError, Json, ToJson};
@@ -91,16 +89,12 @@ impl RequestExecutor for DefaultRequestExecutor {
 
 impl Client <DefaultRequestExecutor> {
     pub fn new(apikey: &str) -> Client<DefaultRequestExecutor> {
-        let tls = NativeTlsClient::new().unwrap();
-        let connector = HttpsConnector::new(tls);
-        let client = ::hyper::Client::with_connector(connector);
-
         Client {
             request_exec: DefaultRequestExecutor::new(apikey),
             apikey: apikey.to_string(),
             endpoint: DEFAULT_API_ENDPOINT.to_string(),
             import_endpoint: DEFAULT_API_IMPORT_ENDPOINT.to_string(),
-            http_client: client
+            http_client: ::hyper::Client::new()
         }
     }
 }
