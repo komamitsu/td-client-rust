@@ -10,7 +10,7 @@ use std::thread;
 use flate2::read::GzDecoder;
 use hyper::client::{RequestBuilder, Body};
 use hyper::client::response::Response;
-use hyper::header::{Authorization, ContentType, ContentLength};
+use hyper::header::{AcceptEncoding, Authorization, ContentType, ContentLength, Encoding, qitem};
 use hyper::mime::{Mime, TopLevel, SubLevel};
 use regex::Regex;
 use rustc_serialize::*;
@@ -511,7 +511,8 @@ impl <R> Client <R> where R: RequestExecutor {
             self.get_response(
                 self.http_client.
                     get(format!("{}/v3/job/result/{}?format=msgpack_gz",
-                                self.endpoint, job_id).as_str())
+                                self.endpoint, job_id).as_str()).
+                    header(AcceptEncoding(vec![qitem(Encoding::Gzip)]))
             )
         );
 
