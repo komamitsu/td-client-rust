@@ -546,14 +546,11 @@ impl <R> Client <R> where R: RequestExecutor {
         Ok(())
     }
 
-    pub fn each_row_in_job_result<F>(&self, job_id: u64, f: &F) -> Result<(), TreasureDataError>
+    fn each_row_from_read<F>(&self, mut read: &mut Read, f: &F) -> Result<(), TreasureDataError>
         where F: Fn(Vec<Value>) -> bool {
-        let (response, _) = try!(self.job_result(job_id));
-
-        let mut d = try!(GzDecoder::new(response));
 
         loop {
-            match ::rmpv::decode::read_value(&mut d) {
+            match ::rmpv::decode::read_value(&mut read) {
                 Ok(::rmpv::Value::Array(xs)) =>
                     if !f(xs.into_iter().map(|x| Value::from(x)).collect()) {
                         // Something wrong happened
@@ -569,6 +566,24 @@ impl <R> Client <R> where R: RequestExecutor {
                 Err(err) => try!(Err(err))
             }
         }
+    }
+
+    pub fn each_row_in_job_result<F>(&self, job_id: u64, f: &F) -> Result<(), TreasureDataError>
+        where F: Fn(Vec<Value>) -> bool {
+
+        let (response, _) = try!(self.job_result(job_id));
+
+        let mut d = try!(GzDecoder::new(response));
+
+        self.each_row_from_read(&mut d, f)
+    }
+
+    pub fn each_row_in_job_result_file<F>(&self, in_file: &File, f: &F) -> Result<(), TreasureDataError>
+        where F: Fn(Vec<Value>) -> bool {
+
+        let mut d = try!(GzDecoder::new(in_file));
+
+        self.each_row_from_read(&mut d, f)
     }
 
     pub fn kill_job(&self, job_id: u64)
