@@ -1,5 +1,6 @@
 # td-client-rust
 [<img src="https://travis-ci.org/komamitsu/td-client-rust.svg?branch=master"/>](https://travis-ci.org/komamitsu/td-client-rust)
+[<img src="https://img.shields.io/crates/v/td-client.svg"/>](https://crates.io/crates/td-client)
 
 Rust Client Library for Treasure Data
 
