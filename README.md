@@ -10,7 +10,7 @@ Add the following dependency in Cargo.toml
 
 ```
 [dependencies]
-td-client = "0.6"
+td-client = "0.7"
 ```
 
 ## Usage
