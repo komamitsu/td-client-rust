@@ -582,16 +582,10 @@ impl <R> Client <R> where R: RequestExecutor {
 
 #[cfg(test)]
 mod tests {
-    use std::io::{self, Cursor, Read, Write};
-    use std::time::Duration;
-    use std::net::{SocketAddr, Shutdown};
-    use reqwest::Url;
-    use reqwest::net::NetworkStream;
-    use reqwest::client::{RequestBuilder, Response};
+    extern crate mockito;
+    use self::mockito::mock;
 
-    use super::RequestExecutor;
-    use client::Client;
-    use error::TreasureDataError;
+    use client::{Client, DefaultRequestExecutor};
 
     const APIKEY : &'static str = "1234abcd";
 
@@ -613,111 +607,46 @@ mod tests {
         assert_eq!("https://baz.com", client.endpoint);
     }
 
-    struct MockStream {
-        response: Cursor<Vec<u8>>
-    }
-
-    impl MockStream {
-        fn new(response: Vec<u8>) -> Self {
-            MockStream {
-                response: Cursor::new(response)
-            }
-        }
-    }
-
-    impl Read for MockStream {
-        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-            self.response.read(buf)
-        }
-    }
-
-    impl Write for MockStream {
-        fn write(&mut self, msg: &[u8]) -> io::Result<usize> {
-            Ok(msg.len())
-        }
-
-        fn flush(&mut self) -> io::Result<()> {
-            Ok(())
-        }
-    }
-
-    impl NetworkStream for MockStream {
-        fn peer_addr(&mut self) -> io::Result<SocketAddr> {
-            Ok("127.0.0.1:55555".parse().unwrap())
-        }
-
-        fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-            Ok(())
-        }
-
-        fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-            Ok(())
-        }
-
-        fn close(&mut self, _: Shutdown) -> io::Result<()> {
-            Ok(())
-        }
-    }
-
-    struct MockRequestExecutor {
-        response: String
-    }
-
-    impl MockRequestExecutor {
-        fn new(response_header: Vec<&str>, response_body: &str) -> Self {
-            let content_length = format!("Content-Length: {:?}", response_body.len());
-            {
-                let mut response = response_header.clone();
-                response.push(content_length.as_str());
-                response.push("");
-                response.push(response_body);
-                MockRequestExecutor {
-                    response: response.join("\r\n").to_string()
-                }
-            }
-        }
-    }
-
-    impl RequestExecutor for MockRequestExecutor {
-        fn get_response(&self, _: RequestBuilder)
-            -> Result<Response, TreasureDataError> {
-                Ok(
-                    Response::new(
-                        Url::parse("https://localhost:55555/foo/bar").unwrap(),
-                        Box::new(
-                            MockStream::new(self.response.as_str().as_bytes().clone().to_vec())
-                        )
-                    ).unwrap()
-                )
-        }
-    }
-
     #[test]
     fn databases() {
         {
-            let request_exec = MockRequestExecutor::new(
-                vec!["HTTP/1.1 200 OK",
-                     "Content-Type: application/json"],
-                     "{\"databases\":[]}");
-            let client = Client::<MockRequestExecutor>::
-                            new_with_request_executor(APIKEY, request_exec);
+            let _mock_endpoint = mock("GET", "/v3/database/list").
+                with_status(200).
+                with_header("Content-Type", "application/json").
+                with_body("{\"databases\":[]}").
+                create();
+
+            let client = Client {
+                request_exec: DefaultRequestExecutor::new(APIKEY),
+                apikey: APIKEY.to_string(),
+                endpoint: mockito::server_url(),
+                import_endpoint: "".to_string(),
+                http_client: ::reqwest::Client::new()
+            };
             let databases = client.databases().unwrap();
             assert_eq!(0, databases.len());
         }
 
         {
-            let request_exec = MockRequestExecutor::new(
-                vec!["HTTP/1.1 200 OK",
-                     "Content-Type: application/json"],
-                     r#"{"databases":[
-                       {"name":"db0", "count":42, "created_at":"2016-01-01 00:00:00 UTC",
-                        "updated_at":"2016-01-01 01:01:01 UTC", "permission":"query_only"},
-                       {"name":"db1", "count":0, "created_at":"2016-12-31 23:59:59 UTC",
-                        "updated_at":"2016-12-31 23:59:59 UTC", "permission":"administrator"}
-                     ]}"#
-            );
-            let client = Client::<MockRequestExecutor>::
-                            new_with_request_executor(APIKEY, request_exec);
+            let _mock_endpoint = mock("GET", "/v3/database/list").
+                with_status(200).
+                with_header("Content-Type", "application/json").
+                with_body(r#"{"databases":[
+                          {"name":"db0", "count":42, "created_at":"2016-01-01 00:00:00 UTC",
+                           "updated_at":"2016-01-01 01:01:01 UTC", "permission":"query_only"},
+                          {"name":"db1", "count":0, "created_at":"2016-12-31 23:59:59 UTC",
+                           "updated_at":"2016-12-31 23:59:59 UTC", "permission":"administrator"}
+                          ]}"#).
+                create();
+
+            let client = Client {
+                request_exec: DefaultRequestExecutor::new(APIKEY),
+                apikey: APIKEY.to_string(),
+                endpoint: mockito::server_url(),
+                import_endpoint: "".to_string(),
+                http_client: ::reqwest::Client::new()
+            };
+
             let databases = client.databases().unwrap();
             assert_eq!(2, databases.len());
 
