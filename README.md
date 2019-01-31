@@ -4,6 +4,10 @@
 
 Rust Client Library for Treasure Data
 
+## Requirements
+
+Rust 1.30.0 or newer
+
 ## Install
 
 Add the following dependency in Cargo.toml
