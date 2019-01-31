@@ -495,7 +495,7 @@ impl <R> Client <R> where R: RequestExecutor {
                     Ok(ct_len) => Ok(ct_len),
                     _ => Err(TreasureDataError::ApiError(
                         response.status(),
-                        "Failed to parse Content-Length header".to_string()))
+                        format!("Content-Length header value is not integer: value = {}", ct_len_str)))
                 }
                 _ => Err(TreasureDataError::ApiError(
                     response.status(),
