@@ -1,6 +1,6 @@
 extern crate chrono;
 extern crate flate2;
-extern crate hyper;
+extern crate reqwest;
 #[macro_use]
 extern crate log;
 extern crate regex;

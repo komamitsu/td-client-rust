@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufWriter;
@@ -8,10 +7,8 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::thread;
 use flate2::read::GzDecoder;
-use hyper::client::{RequestBuilder, Body};
-use hyper::client::response::Response;
-use hyper::header::{AcceptEncoding, Authorization, ContentType, ContentLength, Encoding, qitem};
-use hyper::mime::{Mime, TopLevel, SubLevel};
+use reqwest::{Body, RequestBuilder, Response, StatusCode};
+use reqwest::header::{ACCEPT_ENCODING, AUTHORIZATION, CONTENT_TYPE, CONTENT_LENGTH};
 use regex::Regex;
 use rustc_serialize::*;
 use rustc_serialize::json::{DecoderError, Json, ToJson};
@@ -28,16 +25,7 @@ pub struct Client <R: RequestExecutor> {
     pub apikey: String,
     pub endpoint: String,
     pub import_endpoint: String,
-    http_client: ::hyper::client::Client
-}
-
-struct ContentBody<'a>(u64, &'a mut Read);
-
-impl <'a> From<ContentBody<'a>> for Body<'a> {
-    fn from(content_body: ContentBody<'a>) -> Body<'a> {
-        let ContentBody(size, read) = content_body;
-        Body::SizedBody(read, size)
-    }
+    http_client: ::reqwest::Client
 }
 
 pub enum JobStatusOption {
@@ -68,21 +56,13 @@ impl RequestExecutor for DefaultRequestExecutor {
     fn get_response(&self, request_builder: RequestBuilder)
         -> Result<Response, TreasureDataError> {
 
-        let mut res =
-            try!(
-                request_builder.
-                header(Authorization(format!("TD1 {}", self.apikey).as_str().to_owned())).
-                send()
-            );
-        match res.status {
-            ::hyper::status::StatusCode::Ok => {
-                Ok(res)
-            },
-            _ => {
-                let mut s = String::new();
-                try!(res.read_to_string(&mut s));
-                Err(TreasureDataError::ApiError(res.status, s))
-            }
+        let mut res = request_builder.
+            header(AUTHORIZATION, format!("TD1 {}", self.apikey).as_str().to_owned()).
+            send()?;
+
+        match res.status() {
+            StatusCode::OK => Ok(res),
+            _ => Err(TreasureDataError::ApiError(res.status(), res.text()?))
         }
     }
 }
@@ -94,7 +74,7 @@ impl Client <DefaultRequestExecutor> {
             apikey: apikey.to_string(),
             endpoint: DEFAULT_API_ENDPOINT.to_string(),
             import_endpoint: DEFAULT_API_IMPORT_ENDPOINT.to_string(),
-            http_client: ::hyper::Client::new()
+            http_client: ::reqwest::Client::new()
         }
     }
 }
@@ -108,7 +88,7 @@ impl <R> Client <R> where R: RequestExecutor {
             apikey: apikey.to_string(),
             endpoint: DEFAULT_API_ENDPOINT.to_string(),
             import_endpoint: DEFAULT_API_IMPORT_ENDPOINT.to_string(),
-            http_client: ::hyper::Client::new()
+            http_client: ::reqwest::Client::new()
         }
     }
 
@@ -140,14 +120,8 @@ impl <R> Client <R> where R: RequestExecutor {
                     -> Result<String, TreasureDataError> {
         let result: Result<Response, TreasureDataError> = self.get_response(request_builder);
         match result {
-            Ok(mut res) => {
-                let mut s = String::new();
-                try!(res.read_to_string(&mut s));
-                Ok(s)
-            },
-            Err(err) => {
-                Err(err)
-            }
+            Ok(mut res) => Ok(res.text()?),
+            Err(err) => Err(err)
         }
     }
 
@@ -279,8 +253,8 @@ impl <R> Client <R> where R: RequestExecutor {
                 self.http_client.
                     post(format!("{}/v3/table/append-schema/{}/{}",
                                  self.endpoint, database_name, table_name).as_str()).
-                    header(ContentType(Mime(TopLevel::Application, SubLevel::Json, vec![]))).
-                    body(Json::Object(body).to_string().as_str())
+                    header(CONTENT_TYPE, "application/json").
+                    body(Json::Object(body).to_string())
             )
         );
         Ok(())
@@ -306,15 +280,15 @@ impl <R> Client <R> where R: RequestExecutor {
                 self.http_client.
                     post(format!("{}/v3/table/update-schema/{}/{}",
                                  self.endpoint, dst_database_name, dst_table_name).as_str()).
-                    header(ContentType(Mime(TopLevel::Application, SubLevel::Json, vec![]))).
-                    body(Json::Object(body).to_string().as_str())
+                    header(CONTENT_TYPE, "application/json").
+                    body(Json::Object(body).to_string())
             )
         );
         Ok(())
     }
 
     pub fn import_msgpack_gz_to_table(&self, database_name: &str, name: &str,
-                        data_len: u64, data: &mut Read, unique_id: Option<&str>)
+                                      data: impl Into<Body>, unique_id: Option<&str>)
                         -> Result<(), TreasureDataError> {
         let url = match unique_id {
             Some(unique_id) => format!("{}/v3/table/import_with_id/{}/{}/{}/msgpack.gz",
@@ -324,7 +298,8 @@ impl <R> Client <R> where R: RequestExecutor {
         };
         try!(
             self.get_response_as_string(
-                self.http_client.put(url.as_str()).body(ContentBody(data_len, data))
+                self.http_client.put(url.as_str()).
+                    body(data)
             )
         );
         Ok(())
@@ -332,10 +307,8 @@ impl <R> Client <R> where R: RequestExecutor {
 
     pub fn import_msgpack_gz_file_to_table(&self, database_name: &str, name: &str,
                         file_path: &str, unique_id: Option<&str>)
-                        -> Result<(), TreasureDataError> {
-        self.import_msgpack_gz_to_table(database_name, name,
-                                         try!(fs::metadata(file_path)).len(),
-                                         &mut try!(File::open(file_path)), unique_id)
+                                           -> Result<(), TreasureDataError> {
+        self.import_msgpack_gz_to_table(database_name, name, File::open(file_path)?, unique_id)
     }
 
     fn decode_job(&self, job_json: &json::Json) -> Result<Job, TreasureDataError> {
@@ -475,8 +448,8 @@ impl <R> Client <R> where R: RequestExecutor {
                 self.http_client.
                     post(format!("{}/v3/job/issue/{}/{}",
                                 self.endpoint, query_type.to_string(), database_name).as_str()).
-                    header(ContentType(Mime(TopLevel::Application, SubLevel::Json, vec![]))).
-                    body(Json::Object(body).to_string().as_str())
+                    header(CONTENT_TYPE, "application/json").
+                    body(Json::Object(body).to_string())
             )
         );
         let json: json::Json = try!(json::Json::from_str(response_body.as_str()));
@@ -512,19 +485,27 @@ impl <R> Client <R> where R: RequestExecutor {
                 self.http_client.
                     get(format!("{}/v3/job/result/{}?format=msgpack_gz",
                                 self.endpoint, job_id).as_str()).
-                    header(AcceptEncoding(vec![qitem(Encoding::Gzip)]))
+                    header(ACCEPT_ENCODING, "zgip")
             )
         );
 
-        let &ContentLength(content_len) = try!(
-            response.headers.get::<ContentLength>().
-            ok_or(TreasureDataError::ApiError(
-                    response.status,
-                    "Content-Lentgh doesn't exist".to_string()))
-            );
-        let content_len = content_len as usize;
-
-        Ok((response, content_len))
+        let content_length = match response.headers().get(CONTENT_LENGTH) {
+            Some(header_value) => match header_value.to_str() {
+                Ok(ct_len_str) => match ct_len_str.parse::<usize>() {
+                    Ok(ct_len) => Ok(ct_len),
+                    _ => Err(TreasureDataError::ApiError(
+                        response.status(),
+                        format!("Content-Length header value is not integer: value = {}", ct_len_str)))
+                }
+                _ => Err(TreasureDataError::ApiError(
+                    response.status(),
+                    "Failed to parse Content-Length header".to_string()))
+            }
+            _ => Err(TreasureDataError::ApiError(
+                response.status(),
+                "Content-Lentgh doesn't exist".to_string()))
+        }?;
+        Ok((response, content_length))
     }
 
     pub fn download_job_result(&self, job_id: u64, out_file: &File)
@@ -601,16 +582,10 @@ impl <R> Client <R> where R: RequestExecutor {
 
 #[cfg(test)]
 mod tests {
-    use std::io::{self, Cursor, Read, Write};
-    use std::time::Duration;
-    use std::net::{SocketAddr, Shutdown};
-    use hyper::Url;
-    use hyper::net::NetworkStream;
-    use hyper::client::{RequestBuilder, Response};
+    extern crate mockito;
+    use self::mockito::mock;
 
-    use super::RequestExecutor;
-    use client::Client;
-    use error::TreasureDataError;
+    use client::{Client, DefaultRequestExecutor};
 
     const APIKEY : &'static str = "1234abcd";
 
@@ -632,111 +607,46 @@ mod tests {
         assert_eq!("https://baz.com", client.endpoint);
     }
 
-    struct MockStream {
-        response: Cursor<Vec<u8>>
-    }
-
-    impl MockStream {
-        fn new(response: Vec<u8>) -> Self {
-            MockStream {
-                response: Cursor::new(response)
-            }
-        }
-    }
-
-    impl Read for MockStream {
-        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-            self.response.read(buf)
-        }
-    }
-
-    impl Write for MockStream {
-        fn write(&mut self, msg: &[u8]) -> io::Result<usize> {
-            Ok(msg.len())
-        }
-
-        fn flush(&mut self) -> io::Result<()> {
-            Ok(())
-        }
-    }
-
-    impl NetworkStream for MockStream {
-        fn peer_addr(&mut self) -> io::Result<SocketAddr> {
-            Ok("127.0.0.1:55555".parse().unwrap())
-        }
-
-        fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-            Ok(())
-        }
-
-        fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-            Ok(())
-        }
-
-        fn close(&mut self, _: Shutdown) -> io::Result<()> {
-            Ok(())
-        }
-    }
-
-    struct MockRequestExecutor {
-        response: String
-    }
-
-    impl MockRequestExecutor {
-        fn new(response_header: Vec<&str>, response_body: &str) -> Self {
-            let content_length = format!("Content-Length: {:?}", response_body.len());
-            {
-                let mut response = response_header.clone();
-                response.push(content_length.as_str());
-                response.push("");
-                response.push(response_body);
-                MockRequestExecutor {
-                    response: response.join("\r\n").to_string()
-                }
-            }
-        }
-    }
-
-    impl RequestExecutor for MockRequestExecutor {
-        fn get_response(&self, _: RequestBuilder)
-            -> Result<Response, TreasureDataError> {
-                Ok(
-                    Response::new(
-                        Url::parse("https://localhost:55555/foo/bar").unwrap(),
-                        Box::new(
-                            MockStream::new(self.response.as_str().as_bytes().clone().to_vec())
-                        )
-                    ).unwrap()
-                )
-        }
-    }
-
     #[test]
     fn databases() {
         {
-            let request_exec = MockRequestExecutor::new(
-                vec!["HTTP/1.1 200 OK",
-                     "Content-Type: application/json"],
-                     "{\"databases\":[]}");
-            let client = Client::<MockRequestExecutor>::
-                            new_with_request_executor(APIKEY, request_exec);
+            let _mock_endpoint = mock("GET", "/v3/database/list").
+                with_status(200).
+                with_header("Content-Type", "application/json").
+                with_body("{\"databases\":[]}").
+                create();
+
+            let client = Client {
+                request_exec: DefaultRequestExecutor::new(APIKEY),
+                apikey: APIKEY.to_string(),
+                endpoint: mockito::server_url(),
+                import_endpoint: "".to_string(),
+                http_client: ::reqwest::Client::new()
+            };
             let databases = client.databases().unwrap();
             assert_eq!(0, databases.len());
         }
 
         {
-            let request_exec = MockRequestExecutor::new(
-                vec!["HTTP/1.1 200 OK",
-                     "Content-Type: application/json"],
-                     r#"{"databases":[
-                       {"name":"db0", "count":42, "created_at":"2016-01-01 00:00:00 UTC",
-                        "updated_at":"2016-01-01 01:01:01 UTC", "permission":"query_only"},
-                       {"name":"db1", "count":0, "created_at":"2016-12-31 23:59:59 UTC",
-                        "updated_at":"2016-12-31 23:59:59 UTC", "permission":"administrator"}
-                     ]}"#
-            );
-            let client = Client::<MockRequestExecutor>::
-                            new_with_request_executor(APIKEY, request_exec);
+            let _mock_endpoint = mock("GET", "/v3/database/list").
+                with_status(200).
+                with_header("Content-Type", "application/json").
+                with_body(r#"{"databases":[
+                          {"name":"db0", "count":42, "created_at":"2016-01-01 00:00:00 UTC",
+                           "updated_at":"2016-01-01 01:01:01 UTC", "permission":"query_only"},
+                          {"name":"db1", "count":0, "created_at":"2016-12-31 23:59:59 UTC",
+                           "updated_at":"2016-12-31 23:59:59 UTC", "permission":"administrator"}
+                          ]}"#).
+                create();
+
+            let client = Client {
+                request_exec: DefaultRequestExecutor::new(APIKEY),
+                apikey: APIKEY.to_string(),
+                endpoint: mockito::server_url(),
+                import_endpoint: "".to_string(),
+                http_client: ::reqwest::Client::new()
+            };
+
             let databases = client.databases().unwrap();
             assert_eq!(2, databases.len());
 

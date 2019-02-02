@@ -30,8 +30,8 @@ pub enum TreasureDataError {
     MsgpackDecodeError(::rmpv::decode::Error),
     MsgpackUnexpectedValueError(::rmpv::Value),
     TimeStampParseError(::chrono::ParseError),
-    HttpError(::hyper::error::Error),
-    ApiError(::hyper::status::StatusCode, String),
+    HttpError(::reqwest::Error),
+    ApiError(::reqwest::StatusCode, String),
     InvalidArgumentError(InvalidArgument),
     IoError(::std::io::Error)
 }
@@ -54,8 +54,8 @@ impl From<::rmpv::decode::Error> for TreasureDataError {
     }
 }
 
-impl From<::hyper::error::Error> for TreasureDataError {
-    fn from(err: ::hyper::error::Error) -> TreasureDataError {
+impl From<::reqwest::Error> for TreasureDataError {
+    fn from(err: ::reqwest::Error) -> TreasureDataError {
         TreasureDataError::HttpError(err)
     }
 }
