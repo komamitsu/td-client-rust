@@ -1,6 +1,6 @@
 [package]
 name = "td-client"
-version = "0.7.0"
+version = "0.7.2"
 authors = ["Mitsunori Komatsu <komamitsu@gmail.com>"]
 description = "Rust Client Library for Treasure Data"
 homepage = "https://github.com/komamitsu/td-client-rust"
