@@ -91,7 +91,7 @@ impl TableImportWritableChunk {
             )))?
             .to_string();
         let file = File::create(file_path.clone())?;
-        let write = GzEncoder::new(file, Compression::Default);
+        let write = GzEncoder::new(file, Compression::default());
         Ok(TableImportWritableChunk {
             elms_in_row: None,
             file_path: file_path,

@@ -5,14 +5,14 @@ use std::str::FromStr;
 use error::*;
 
 #[derive(PartialEq, Eq, Debug, RustcEncodable)]
-pub struct TimeStamp(DateTime<UTC>);
+pub struct TimeStamp(DateTime<Utc>);
 
 impl FromStr for TimeStamp {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let datetime = s
-            .parse::<DateTime<UTC>>()
-            .or(UTC.datetime_from_str(s, "%Y-%m-%d %H:%M:%S UTC"))?;
+            .parse::<DateTime<Utc>>()
+            .or(Utc.datetime_from_str(s, "%Y-%m-%d %H:%M:%S UTC"))?;
         Ok(TimeStamp(datetime))
     }
 }

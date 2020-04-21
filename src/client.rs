@@ -620,7 +620,7 @@ where
     {
         let (response, _) = self.job_result(job_id)?;
 
-        let mut d = GzDecoder::new(response)?;
+        let mut d = GzDecoder::new(response);
 
         self.each_row_from_read(&mut d, f)
     }
@@ -633,7 +633,7 @@ where
     where
         F: Fn(Vec<Value>) -> bool,
     {
-        let mut d = GzDecoder::new(in_file)?;
+        let mut d = GzDecoder::new(in_file);
 
         self.each_row_from_read(&mut d, f)
     }
