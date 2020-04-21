@@ -31,22 +31,23 @@ impl From<::rmpv::Value> for Value {
             ::rmpv::Value::Integer(x) => {
                 if x.is_i64() {
                     Value::Integer(Integer::I64(x.as_i64().unwrap()))
-                }
-                else {
+                } else {
                     Value::Integer(Integer::U64(x.as_u64().unwrap()))
                 }
-            },
-            ::rmpv::Value::F32(x)=> Value::Float(Float::F32(x)),
-            ::rmpv::Value::F64(x)=> Value::Float(Float::F64(x)),
+            }
+            ::rmpv::Value::F32(x) => Value::Float(Float::F32(x)),
+            ::rmpv::Value::F64(x) => Value::Float(Float::F64(x)),
             ::rmpv::Value::String(x) => Value::String(x.into_str().unwrap()),
             ::rmpv::Value::Binary(x) => Value::Binary(x),
-            ::rmpv::Value::Array(xs) =>
-                Value::Array(xs.into_iter().map(|x| Value::from(x)).collect()),
-            ::rmpv::Value::Map(xs) =>
-                Value::Map(xs.into_iter().map(|(k, v)| {
-                    (Value::from(k), Value::from(v))
-                }).collect()),
-            ::rmpv::Value::Ext(i, x) => Value::Ext(i, x)
+            ::rmpv::Value::Array(xs) => {
+                Value::Array(xs.into_iter().map(|x| Value::from(x)).collect())
+            }
+            ::rmpv::Value::Map(xs) => Value::Map(
+                xs.into_iter()
+                    .map(|(k, v)| (Value::from(k), Value::from(v)))
+                    .collect(),
+            ),
+            ::rmpv::Value::Ext(i, x) => Value::Ext(i, x),
         }
     }
 }

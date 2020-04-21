@@ -4,12 +4,16 @@ use std::fmt;
 #[derive(Debug)]
 pub struct InvalidArgument {
     pub key: String,
-    pub value: String
+    pub value: String,
 }
 
 impl fmt::Display for InvalidArgument {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Invalid argument. key:{}, value:{}", self.key, self.value)
+        write!(
+            f,
+            "Invalid argument. key:{}, value:{}",
+            self.key, self.value
+        )
     }
 }
 
@@ -29,7 +33,7 @@ pub enum TreasureDataError {
     HttpError(::reqwest::Error),
     ApiError(::reqwest::StatusCode, String),
     InvalidArgumentError(InvalidArgument),
-    IoError(::std::io::Error)
+    IoError(::std::io::Error),
 }
 
 impl From<::rustc_serialize::json::DecoderError> for TreasureDataError {
@@ -91,7 +95,7 @@ impl Error for TreasureDataError {
             TreasureDataError::HttpError(ref x) => Some(x),
             TreasureDataError::ApiError(..) => None,
             TreasureDataError::InvalidArgumentError(ref x) => Some(x),
-            TreasureDataError::IoError(ref x) => Some(x)
+            TreasureDataError::IoError(ref x) => Some(x),
         }
     }
 }

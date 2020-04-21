@@ -1,6 +1,6 @@
-use std::str::FromStr;
-use rustc_serialize::*;
 use chrono::*;
+use rustc_serialize::*;
+use std::str::FromStr;
 
 use error::*;
 
@@ -10,8 +10,8 @@ pub struct TimeStamp(DateTime<UTC>);
 impl FromStr for TimeStamp {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let datetime = 
-            s.parse::<DateTime<UTC>>()
+        let datetime = s
+            .parse::<DateTime<UTC>>()
             .or(UTC.datetime_from_str(s, "%Y-%m-%d %H:%M:%S UTC"))?;
         Ok(TimeStamp(datetime))
     }
@@ -29,7 +29,7 @@ impl Decodable for TimeStamp {
         let field = d.read_str()?;
         match field.parse() {
             Ok(result) => Ok(result),
-            Err(_) => Err(d.error(&*format!("Could not parse '{}' as a TimeStamp.", field)))
+            Err(_) => Err(d.error(&*format!("Could not parse '{}' as a TimeStamp.", field))),
         }
     }
 }
@@ -44,13 +44,13 @@ pub struct Table {
     pub estimated_storage_size: u64,
     pub last_import: Option<TimeStamp>,
     pub last_log_timestamp: Option<TimeStamp>,
-    pub expire_days: Option<u32>
+    pub expire_days: Option<u32>,
 }
 
 #[derive(Debug, RustcDecodable, RustcEncodable)]
 pub struct Tables {
     pub database: String,
-    pub tables: Vec<Table>
+    pub tables: Vec<Table>,
 }
 
 #[derive(Debug, RustcDecodable, RustcEncodable)]
@@ -59,12 +59,12 @@ pub struct Database {
     pub count: u64,
     pub created_at: TimeStamp,
     pub updated_at: TimeStamp,
-    pub permission: String
+    pub permission: String,
 }
 
 #[derive(Debug, RustcDecodable, RustcEncodable)]
 pub struct Databases {
-    pub databases: Vec<Database>
+    pub databases: Vec<Database>,
 }
 
 #[derive(Debug)]
@@ -73,7 +73,7 @@ pub enum JobStatus {
     Running,
     Success,
     Killed,
-    Error
+    Error,
 }
 
 impl FromStr for JobStatus {
@@ -86,7 +86,9 @@ impl FromStr for JobStatus {
             "killed" => Ok(JobStatus::Killed),
             "error" => Ok(JobStatus::Error),
             _ => Err(json::DecoderError::ExpectedError(
-                    "(queued|running|success|error|killed)".to_string(), s.to_string()))
+                "(queued|running|success|error|killed)".to_string(),
+                s.to_string(),
+            )),
         }
     }
 }
@@ -94,7 +96,7 @@ impl FromStr for JobStatus {
 #[derive(Debug, RustcEncodable)]
 pub enum JobQuery {
     Query(String),
-    Config(json::Json)
+    Config(json::Json),
 }
 
 // We can't use RustcDecodable because `query` can have either string or object...
@@ -113,7 +115,7 @@ pub struct Job {
     pub hive_result_schema: Option<Vec<Vec<String>>>,
     pub priority: u64,
     pub retry_limit: u64,
-    pub duration: Option<u64>
+    pub duration: Option<u64>,
 }
 
 #[derive(Debug)]
@@ -121,14 +123,14 @@ pub struct Jobs {
     pub count: u64,
     pub from: Option<u64>,
     pub to: Option<u64>,
-    pub jobs: Vec<Job>
+    pub jobs: Vec<Job>,
 }
 
 #[derive(Debug, Clone, RustcDecodable, RustcEncodable)]
 pub enum QueryType {
     Hive,
     Presto,
-    Pig
+    Pig,
 }
 
 impl ToString for QueryType {
@@ -136,7 +138,7 @@ impl ToString for QueryType {
         match self {
             &QueryType::Hive => "hive".to_string(),
             &QueryType::Presto => "presto".to_string(),
-            &QueryType::Pig => "pig".to_string()
+            &QueryType::Pig => "pig".to_string(),
         }
     }
 }
@@ -150,8 +152,8 @@ impl FromStr for QueryType {
             "pig" => Ok(QueryType::Pig),
             _ => Err(InvalidArgument {
                 key: "query_type".to_string(),
-                value: s.to_string()
-            })
+                value: s.to_string(),
+            }),
         }
     }
 }
@@ -163,7 +165,7 @@ pub enum SchemaType {
     Float,
     Double,
     String,
-    Array(Box<SchemaType>)
+    Array(Box<SchemaType>),
 }
 
 impl ToString for SchemaType {
@@ -174,9 +176,9 @@ impl ToString for SchemaType {
             &SchemaType::Float => "float".to_string(),
             &SchemaType::Double => "double".to_string(),
             &SchemaType::String => "string".to_string(),
-            &SchemaType::Array(ref inner_type) =>
+            &SchemaType::Array(ref inner_type) => {
                 ["array<", inner_type.to_string().as_str(), ">"].concat()
+            }
         }
     }
 }
-
