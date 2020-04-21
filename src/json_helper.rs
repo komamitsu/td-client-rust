@@ -19,7 +19,7 @@ macro_rules! pick_item_base {
 
 macro_rules! pick_item {
     ($json:expr, $item_name:expr, $conv_func:ident, $type_name:expr) => (
-        try!(pick_item_base!($json, $item_name, $conv_func, $type_name))
+        pick_item_base!($json, $item_name, $conv_func, $type_name)?
     )
 }
 
@@ -31,7 +31,7 @@ macro_rules! pick_string_item {
 
 macro_rules! pick_timestamp_item {
     ($json:expr, $item_name:expr) => (
-        try!(TimeStamp::from_str(pick_item!($json, $item_name, as_string, "String")))
+        TimeStamp::from_str(pick_item!($json, $item_name, as_string, "String"))?
     )
 }
 
@@ -41,10 +41,11 @@ macro_rules! pick_u64_item {
     )
 }
 
+#[allow(unused_macros)]
 macro_rules! pick_array_string_item {
     ($json:expr, $item_name:expr) => ({
         let items: &Vec<json::Json> = pick_item!($json, $item_name, as_array, "Array");
-        try!(items.iter().
+        items.iter().
             map(|j| {
                 let result: Result<String, DecoderError> =
                     j.as_string().
@@ -53,7 +54,7 @@ macro_rules! pick_array_string_item {
                         and_then(|x| Ok(x.to_string()));
                 result
             }).collect::<Result<Vec<String>, _>>()
-        )
+        ?
     })
 }
 
@@ -73,7 +74,7 @@ macro_rules! pick_opt_timestamp_item {
     ($json:expr, $item_name:expr) => (
         match pick_opt_item!($json, $item_name, as_string, "String") {
             Some("") => None,
-            Some(x) => Some(try!(TimeStamp::from_str(x))),
+            Some(x) => Some(TimeStamp::from_str(x)?),
             None => None
         }
     )

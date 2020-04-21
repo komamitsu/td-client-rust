@@ -10,9 +10,9 @@ pub struct TimeStamp(DateTime<UTC>);
 impl FromStr for TimeStamp {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let datetime = try!(
+        let datetime = 
             s.parse::<DateTime<UTC>>()
-            .or(UTC.datetime_from_str(s, "%Y-%m-%d %H:%M:%S UTC")));
+            .or(UTC.datetime_from_str(s, "%Y-%m-%d %H:%M:%S UTC"))?;
         Ok(TimeStamp(datetime))
     }
 }
@@ -26,7 +26,7 @@ impl ToString for TimeStamp {
 
 impl Decodable for TimeStamp {
     fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-        let field = try!(d.read_str());
+        let field = d.read_str()?;
         match field.parse() {
             Ok(result) => Ok(result),
             Err(_) => Err(d.error(&*format!("Could not parse '{}' as a TimeStamp.", field)))

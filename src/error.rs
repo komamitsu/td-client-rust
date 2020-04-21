@@ -9,16 +9,12 @@ pub struct InvalidArgument {
 
 impl fmt::Display for InvalidArgument {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}. key:{}, value:{}", self.description(), self.key, self.value)
+        write!(f, "Invalid argument. key:{}, value:{}", self.key, self.value)
     }
 }
 
 impl Error for InvalidArgument {
-    fn description(&self) -> &str {
-        "invalid argument"
-    }
-
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         None
     }
 }
@@ -80,28 +76,12 @@ impl From<::chrono::ParseError> for TreasureDataError {
 
 impl fmt::Display for TreasureDataError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.description())
+        write!(f, "{}", self)
     }
 }
 
 impl Error for TreasureDataError {
-    fn description(&self) -> &str {
-        match *self {
-            TreasureDataError::JsonDecodeError(ref x) => x.description(),
-            TreasureDataError::JsonParseError(ref x) => x.description(),
-            TreasureDataError::MsgpackDecodeError(ref x) => x.description(),
-            TreasureDataError::MsgpackUnexpectedValueError(..) =>
-                "recieved unexpected MessagePack value",
-            TreasureDataError::TimeStampParseError(ref x) => x.description(),
-            TreasureDataError::HttpError(ref x) => x.description(),
-            TreasureDataError::ApiError(..) =>
-                "recieved unexpected status code",
-            TreasureDataError::InvalidArgumentError(ref x) => x.description(),
-            TreasureDataError::IoError(ref x) => x.description()
-        }
-    }
-
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         match *self {
             TreasureDataError::JsonDecodeError(ref x) => Some(x),
             TreasureDataError::JsonParseError(ref x) => Some(x),

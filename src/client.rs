@@ -127,109 +127,103 @@ impl <R> Client <R> where R: RequestExecutor {
 
     // Database API
     pub fn databases(&self) -> Result<Vec<Database>, TreasureDataError> {
-        let response_body = try!(
-            self.get_response_as_string(
+        let response_body = self.get_response_as_string(
                 self.http_client.
                     get(format!("{}/v3/database/list",
                                 self.endpoint).as_str())
-            )
-        );
-        let databases: Databases = try!(json::decode(&response_body));
+            )?;
+        let databases: Databases = json::decode(&response_body)?;
         Ok(databases.databases)
     }
 
     pub fn create_database(&self, name: &str) -> Result<(), TreasureDataError> {
-        try!(
-            self.get_response_as_string(
-                self.http_client.
-                    post(format!("{}/v3/database/create/{}",
-                                 self.endpoint, name).as_str())
-            )
-        );
+        self.get_response_as_string(
+            self.http_client.
+            post(format!("{}/v3/database/create/{}",
+                         self.endpoint, name).as_str())
+            )?;
         Ok(())
     }
 
     pub fn delete_database(&self, name: &str) -> Result<(), TreasureDataError> {
-        try!(
-            self.get_response_as_string(
-                self.http_client.
-                    post(format!("{}/v3/database/delete/{}",
-                                 self.endpoint, name).as_str())
-            )
-        );
+        self.get_response_as_string(
+            self.http_client.
+            post(format!("{}/v3/database/delete/{}",
+                         self.endpoint, name).as_str())
+            )?;
         Ok(())
     }
 
     // Table API
     pub fn tables(&self, database_name: &str)-> Result<Vec<Table>, TreasureDataError> {
-        let response_body = try!(
+        let response_body = 
             self.get_response_as_string(
                 self.http_client.
                     get(format!("{}/v3/table/list/{}",
                                 self.endpoint, database_name).as_str())
             )
-        );
-        let tables: Tables = try!(json::decode(&response_body));
+        ?;
+        let tables: Tables = json::decode(&response_body)?;
         Ok(tables.tables)
     }
 
     pub fn tail_table(&self, database_name: &str, name: &str) ->
                       Result<(), TreasureDataError> {
-        try!(
+        
             self.get_response_as_string(
                 self.http_client.
                     get(format!("{}/v3/table/tail/{}/{}",
                                  self.endpoint, database_name, name).as_str())
             )
-        );
+        ?;
         Ok(())
     }
 
     pub fn create_table(&self, database_name: &str, name: &str)
                         -> Result<(), TreasureDataError> {
-        try!(
+        
             self.get_response_as_string(
                 self.http_client.
                     post(format!("{}/v3/table/create/{}/{}/log",
                                  self.endpoint, database_name, name).as_str())
             )
-        );
+        ?;
         Ok(())
     }
 
     pub fn delete_table(&self, database_name: &str, name: &str)
                         -> Result<(), TreasureDataError> {
-        try!(
+        
             self.get_response_as_string(
                 self.http_client.
                     post(format!("{}/v3/table/delete/{}/{}",
                                  self.endpoint, database_name, name).as_str())
             )
-        );
+        ?;
         Ok(())
     }
 
     pub fn rename_table(&self, database_name: &str, name: &str, new_name: &str)
                         -> Result<(), TreasureDataError> {
-        try!(
+        
             self.get_response_as_string(
                 self.http_client.
                     post(format!("{}/v3/table/rename/{}/{}/{}",
                                  self.endpoint, database_name, name, new_name).as_str())
             )
-        );
+        ?;
         Ok(())
     }
 
     pub fn swap_table(&self, database_name: &str, name_a: &str, name_b: &str)
                       -> Result<(), TreasureDataError> {
-        try!(
+        
             self.get_response_as_string(
                 self.http_client.
                     post(format!("{}/v3/table/swap/{}/{}/{}",
                                  self.endpoint, database_name, name_a, name_b).as_str())
             )
-        );
+        ?;
         Ok(())
     }
 
@@ -248,7 +242,7 @@ impl <R> Client <R> where R: RequestExecutor {
             )
         );
 
-        try!(
+        
             self.get_response_as_string(
                 self.http_client.
                     post(format!("{}/v3/table/append-schema/{}/{}",
@@ -256,26 +250,26 @@ impl <R> Client <R> where R: RequestExecutor {
                     header(CONTENT_TYPE, "application/json").
                     body(Json::Object(body).to_string())
             )
-        );
+        ?;
         Ok(())
     }
 
     pub fn copy_table_schema(&self, src_database_name: &str, src_table_name: &str,
                              dst_database_name: &str, dst_table_name: &str)
                       -> Result<(), TreasureDataError> {
-        let src_tables = try!(self.tables(src_database_name));
-        let src_table = try!(
+        let src_tables = self.tables(src_database_name)?;
+        let src_table = 
                 src_tables.iter().find(|t| t.name == src_table_name).
                 ok_or(TreasureDataError::InvalidArgumentError(
                         InvalidArgument {
                             key: "src_table_name".to_string(),
                             value: "not found".to_string()
                         }))
-            );
+            ?;
 
         let mut body = BTreeMap::new();
         body.insert("schema".to_string(), Json::String(src_table.schema.clone()));
-        try!(
+        
             self.get_response_as_string(
                 self.http_client.
                     post(format!("{}/v3/table/update-schema/{}/{}",
@@ -283,7 +277,7 @@ impl <R> Client <R> where R: RequestExecutor {
                     header(CONTENT_TYPE, "application/json").
                     body(Json::Object(body).to_string())
             )
-        );
+        ?;
         Ok(())
     }
 
@@ -296,12 +290,12 @@ impl <R> Client <R> where R: RequestExecutor {
             None => format!("{}/v3/table/import/{}/{}/msgpack.gz",
                             self.endpoint, database_name, name)
         };
-        try!(
+        
             self.get_response_as_string(
                 self.http_client.put(url.as_str()).
                     body(data)
             )
-        );
+        ?;
         Ok(())
     }
 
@@ -315,11 +309,11 @@ impl <R> Client <R> where R: RequestExecutor {
         let hive_result_schema_opt_array: Option<Vec<Vec<String>>> =
             match pick_opt_string_item!(job_json, "hive_result_schema") {
                 None => None,
-                Some(s) => Some(try!(json::decode::<Vec<Vec<String>>>(s.as_str())))
+                Some(s) => Some(json::decode::<Vec<Vec<String>>>(s.as_str())?)
             };
 
         let query: JobQuery =
-            try!(
+            
                 job_json.
                 find("query").
                 ok_or(DecoderError::MissingFieldError("query".to_string())).
@@ -332,7 +326,7 @@ impl <R> Client <R> where R: RequestExecutor {
                          Ok(JobQuery::Config(json.clone()))
                      }
                 )
-            );
+            ?;
 
         Ok(Job {
             job_id: pick_string_item!(job_json, "job_id").parse().unwrap(),
@@ -378,7 +372,7 @@ impl <R> Client <R> where R: RequestExecutor {
         }
         let joined_params = params.join("&");
         let body = joined_params.as_str();
-        let response_body = try!(
+        let response_body = 
             self.get_response_as_string(
                 self.http_client.
                     get(format!("{}/v3/job/list{}{}",
@@ -386,9 +380,9 @@ impl <R> Client <R> where R: RequestExecutor {
                                 if body.len() == 0 { "" } else { "?" },
                                 body).as_str())
             )
-        );
+        ?;
         
-        let response_json = try!(json::Json::from_str(&response_body));
+        let response_json = json::Json::from_str(&response_body)?;
         let jobs_json = pick_item!(response_json, "jobs", as_array, "Array");
         let count = pick_u64_item!(response_json, "count");
         let from = pick_opt_u64_item!(response_json, "from");
@@ -396,7 +390,7 @@ impl <R> Client <R> where R: RequestExecutor {
 
         let mut jobs = Vec::<Job>::new();
         for job_json in jobs_json {
-            jobs.push(try!(self.decode_job(job_json)))
+            jobs.push(self.decode_job(job_json)?)
         }
 
         let result: Jobs = Jobs { count: count, from: from, to: to, jobs: jobs};
@@ -404,27 +398,27 @@ impl <R> Client <R> where R: RequestExecutor {
     }
 
     pub fn job(&self, job_id: u64) -> Result<Job, TreasureDataError> {
-        let response_body = try!(
+        let response_body = 
             self.get_response_as_string(
                 self.http_client.
                     get(format!("{}/v3/job/show/{}", self.endpoint, job_id).as_str())
             )
-        );
-        let job_json: json::Json = try!(json::Json::from_str(response_body.as_str()));
-        let job: Job = try!(self.decode_job(&job_json));
+        ?;
+        let job_json: json::Json = json::Json::from_str(response_body.as_str())?;
+        let job: Job = self.decode_job(&job_json)?;
         Ok(job)
     }
 
     pub fn job_status(&self, job_id: u64) -> Result<JobStatus, TreasureDataError> {
-        let response_body = try!(
+        let response_body = 
             self.get_response_as_string(
                 self.http_client.
                     get(format!("{}/v3/job/status/{}", self.endpoint, job_id).as_str())
             )
-        );
-        let job_json: json::Json = try!(json::Json::from_str(response_body.as_str()));
+        ?;
+        let job_json: json::Json = json::Json::from_str(response_body.as_str())?;
         let status: String = pick_string_item!(job_json, "status");
-        Ok(try!(JobStatus::from_str(status.as_str())))
+        Ok(JobStatus::from_str(status.as_str())?)
     }
 
     pub fn issue_job(&self, query_type: QueryType, database_name: &str, query: &str,
@@ -443,7 +437,7 @@ impl <R> Client <R> where R: RequestExecutor {
                                 body.insert("scheduled_time".to_string(),
                                 x.to_string().to_json()));
 
-        let response_body = try!(
+        let response_body = 
             self.get_response_as_string(
                 self.http_client.
                     post(format!("{}/v3/job/issue/{}/{}",
@@ -451,8 +445,8 @@ impl <R> Client <R> where R: RequestExecutor {
                     header(CONTENT_TYPE, "application/json").
                     body(Json::Object(body).to_string())
             )
-        );
-        let json: json::Json = try!(json::Json::from_str(response_body.as_str()));
+        ?;
+        let json: json::Json = json::Json::from_str(response_body.as_str())?;
         let job_id = pick_string_item!(json, "job_id");
         job_id.parse::<u64>().
             map_err(|_| 
@@ -480,14 +474,14 @@ impl <R> Client <R> where R: RequestExecutor {
 
     pub fn job_result(&self, job_id: u64)
         -> Result<(Response, usize), TreasureDataError> {
-        let response = try!(
+        let response = 
             self.get_response(
                 self.http_client.
                     get(format!("{}/v3/job/result/{}?format=msgpack_gz",
                                 self.endpoint, job_id).as_str()).
                     header(ACCEPT_ENCODING, "zgip")
             )
-        );
+        ?;
 
         let content_length = match response.headers().get(CONTENT_LENGTH) {
             Some(header_value) => match header_value.to_str() {
@@ -510,24 +504,24 @@ impl <R> Client <R> where R: RequestExecutor {
 
     pub fn download_job_result(&self, job_id: u64, out_file: &File)
         -> Result<(), TreasureDataError> {
-        let (mut response, content_len) = try!(self.job_result(job_id));
+        let (mut response, content_len) = self.job_result(job_id)?;
 
         let mut total_read_len = 0;
         let mut in_buf: [u8; 8192] = [0; 8192];
         let mut out_buf = BufWriter::new(out_file);
         while total_read_len < content_len {
-            let read_len = try!(response.read(&mut in_buf));
+            let read_len = response.read(&mut in_buf)?;
             total_read_len += read_len;
-            try!(out_buf.write(&in_buf[0..read_len]));
+            out_buf.write(&in_buf[0..read_len])?;
         }
         if total_read_len > content_len {
             warn!("content_len={}, total_read_len={}", content_len, total_read_len);
         }
-        try!(out_buf.flush());
+        out_buf.flush()?;
         Ok(())
     }
 
-    fn each_row_from_read<F>(&self, mut read: &mut Read, f: &F) -> Result<(), TreasureDataError>
+    fn each_row_from_read<F>(&self, mut read: &mut dyn Read, f: &F) -> Result<(), TreasureDataError>
         where F: Fn(Vec<Value>) -> bool {
 
         loop {
@@ -542,9 +536,9 @@ impl <R> Client <R> where R: RequestExecutor {
                 Err(::rmpv::decode::Error::InvalidMarkerRead(err)) =>
                     match err.kind() {
                         ErrorKind::UnexpectedEof => return Ok(()),
-                        _ => try!(Err(err))
+                        _ => Err(err)?
                     },
-                Err(err) => try!(Err(err))
+                Err(err) => Err(err)?
             }
         }
     }
@@ -552,9 +546,9 @@ impl <R> Client <R> where R: RequestExecutor {
     pub fn each_row_in_job_result<F>(&self, job_id: u64, f: &F) -> Result<(), TreasureDataError>
         where F: Fn(Vec<Value>) -> bool {
 
-        let (response, _) = try!(self.job_result(job_id));
+        let (response, _) = self.job_result(job_id)?;
 
-        let mut d = try!(GzDecoder::new(response));
+        let mut d = GzDecoder::new(response)?;
 
         self.each_row_from_read(&mut d, f)
     }
@@ -562,20 +556,20 @@ impl <R> Client <R> where R: RequestExecutor {
     pub fn each_row_in_job_result_file<F>(&self, in_file: &File, f: &F) -> Result<(), TreasureDataError>
         where F: Fn(Vec<Value>) -> bool {
 
-        let mut d = try!(GzDecoder::new(in_file));
+        let mut d = GzDecoder::new(in_file)?;
 
         self.each_row_from_read(&mut d, f)
     }
 
     pub fn kill_job(&self, job_id: u64)
                         -> Result<(), TreasureDataError> {
-        try!(
+        
             self.get_response_as_string(
                 self.http_client.
                     post(format!("{}//v3/job/kill/{}",
                                  self.endpoint, job_id).as_str())
             )
-        );
+        ?;
         Ok(())
     }
 }
