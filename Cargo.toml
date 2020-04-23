@@ -22,3 +22,4 @@ chrono = { version = "0.4", features = ["rustc-serialize"] }
 
 [dev-dependencies]
 mockito = "0.25"
+rand = "0.7"
