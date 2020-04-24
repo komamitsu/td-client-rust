@@ -7,7 +7,7 @@ use rand::Rng;
 use td_client::client::*;
 use td_client::model::*;
 
-#[cfg(test)]
+#[test]
 fn integration_test() {
     // Run integration tests only when the environment variable is set
     let apikey = match env::var("TD_APIKEY") {
@@ -15,8 +15,8 @@ fn integration_test() {
         _ => return
     };
 
-    let client = Client::new(apikey.as_str()).
-        endpoint("https://api-development.treasuredata.com");
+    let mut client = Client::new(apikey.as_str());
+    client.endpoint("https://api-development.treasuredata.com");
 
     let mut rng = rand::thread_rng();
 
@@ -24,7 +24,11 @@ fn integration_test() {
         let mut s = String::from("td_client_rust_db_");
         let r: u16 = rng.gen();
         s.push_str(r.to_string().as_str());
-        s.as_str();
+        s
     };
+
+    if client.databases().unwrap().iter().all(|db| db.name != database) {
+        client.create_database(database.as_str()).unwrap();
+    }
 }
 
