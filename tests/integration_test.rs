@@ -5,7 +5,16 @@ use std::env;
 use rand::Rng;
 
 use td_client::client::*;
+use td_client::error::*;
 use td_client::model::*;
+
+fn test_with_database(client: &Client<DefaultRequestExecutor>, database: &str) -> Result<(), TreasureDataError> {
+    if client.databases()?.iter().all(|db| db.name != database) {
+        client.create_database(database)?;
+    }
+
+    Ok(())
+}
 
 #[test]
 fn integration_test() {
@@ -27,8 +36,11 @@ fn integration_test() {
         s
     };
 
-    if client.databases().unwrap().iter().all(|db| db.name != database) {
-        client.create_database(database.as_str()).unwrap();
+    let result = test_with_database(&client, &database);
+    if client.databases().unwrap().iter().any(|db| db.name == database) {
+        client.delete_database(&database).unwrap();
     }
+
+    assert!(result.is_ok());
 }
 
