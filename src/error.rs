@@ -4,21 +4,21 @@ use std::fmt;
 #[derive(Debug)]
 pub struct InvalidArgument {
     pub key: String,
-    pub value: String
+    pub value: String,
 }
 
 impl fmt::Display for InvalidArgument {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}. key:{}, value:{}", self.description(), self.key, self.value)
+        write!(
+            f,
+            "Invalid argument. key:{}, value:{}",
+            self.key, self.value
+        )
     }
 }
 
 impl Error for InvalidArgument {
-    fn description(&self) -> &str {
-        "invalid argument"
-    }
-
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         None
     }
 }
@@ -33,7 +33,7 @@ pub enum TreasureDataError {
     HttpError(::reqwest::Error),
     ApiError(::reqwest::StatusCode, String),
     InvalidArgumentError(InvalidArgument),
-    IoError(::std::io::Error)
+    IoError(::std::io::Error),
 }
 
 impl From<::rustc_serialize::json::DecoderError> for TreasureDataError {
@@ -80,28 +80,12 @@ impl From<::chrono::ParseError> for TreasureDataError {
 
 impl fmt::Display for TreasureDataError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.description())
+        write!(f, "{}", self)
     }
 }
 
 impl Error for TreasureDataError {
-    fn description(&self) -> &str {
-        match *self {
-            TreasureDataError::JsonDecodeError(ref x) => x.description(),
-            TreasureDataError::JsonParseError(ref x) => x.description(),
-            TreasureDataError::MsgpackDecodeError(ref x) => x.description(),
-            TreasureDataError::MsgpackUnexpectedValueError(..) =>
-                "recieved unexpected MessagePack value",
-            TreasureDataError::TimeStampParseError(ref x) => x.description(),
-            TreasureDataError::HttpError(ref x) => x.description(),
-            TreasureDataError::ApiError(..) =>
-                "recieved unexpected status code",
-            TreasureDataError::InvalidArgumentError(ref x) => x.description(),
-            TreasureDataError::IoError(ref x) => x.description()
-        }
-    }
-
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         match *self {
             TreasureDataError::JsonDecodeError(ref x) => Some(x),
             TreasureDataError::JsonParseError(ref x) => Some(x),
@@ -111,7 +95,7 @@ impl Error for TreasureDataError {
             TreasureDataError::HttpError(ref x) => Some(x),
             TreasureDataError::ApiError(..) => None,
             TreasureDataError::InvalidArgumentError(ref x) => Some(x),
-            TreasureDataError::IoError(ref x) => Some(x)
+            TreasureDataError::IoError(ref x) => Some(x),
         }
     }
 }
