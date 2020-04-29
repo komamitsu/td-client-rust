@@ -4,9 +4,6 @@
 
 Rust Client Library for Treasure Data
 
-## Requirements
-
-Rust 1.30.0 or newer
 
 ## Install
 
@@ -14,7 +11,7 @@ Add the following dependency in Cargo.toml
 
 ```
 [dependencies]
-td-client = "0.7"
+td-client = "0.9"
 ```
 
 ## Usage
