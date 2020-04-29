@@ -3,18 +3,20 @@ extern crate td_client;
 
 use std::convert::TryInto;
 use std::env;
+use std::error::Error;
+use std::thread;
 use std::sync::{Arc, Mutex};
+use std::time;
 use std::time::SystemTime;
 use std::vec::Vec;
 use rand::Rng;
 
 use td_client::client::*;
-use td_client::error::*;
 use td_client::model::*;
 use td_client::table_import::*;
 use td_client::value::*;
 
-fn test_with_database(client: &Client<DefaultRequestExecutor>, database: &str) -> Result<(), TreasureDataError> {
+fn test_with_database(client: &Client<DefaultRequestExecutor>, database: &str) -> Result<(), Box<dyn Error>> {
     // Prepare database
     if client.databases()?.iter().any(|db| db.name == database) {
         client.delete_database(database)?;
@@ -58,8 +60,12 @@ fn test_with_database(client: &Client<DefaultRequestExecutor>, database: &str) -
         database, &table, readable_chunk.file_path.as_str(), None)?;
 
     // Confirm the imported records
-    // TODO: Retry this block!
-    {
+    let mut count = 0;
+    loop {
+        if count >= 10 {
+            Err("Retried over. Imported records are still unvisible")?;
+        }
+
         let job_id = client.issue_job(
             QueryType::Presto, database,
             format!("select count(1) as cnt from {}", table).as_str(),
@@ -79,7 +85,18 @@ fn test_with_database(client: &Client<DefaultRequestExecutor>, database: &str) -
                 true
             })?;
 
-        assert_eq!(Value::Integer(Integer::I64(2)), records.lock().unwrap()[0][0]);
+        let expected = &Value::Integer(Integer::I64(2));
+        let actual = &records.lock().unwrap()[0][0];
+        if expected == actual {
+            break;
+        }
+        else if expected < actual {
+            Err(format!("Imported records are unexpectedly too many. expected={:?}, actual={:?}", expected, actual))?;
+        }
+
+        println!("Imported records are still unvisible. Retrying...");
+        thread::sleep(time::Duration::from_secs(30));
+        count += 1;
     }
 
     Ok(())
@@ -92,6 +109,7 @@ fn integration_test() {
         Ok(x) => x,
         _ => return
     };
+    println!("envvar TD_APIKEY is set. Starting the integration test");
 
     let mut client = Client::new(apikey.as_str());
     client.endpoint("https://api-development.treasuredata.com");
@@ -102,6 +120,7 @@ fn integration_test() {
         s.push_str(r.to_string().as_str());
         s
     };
+    println!("This integration test will be executed in database `{}`", database);
 
     let result = test_with_database(&client, &database);
     if client.databases().unwrap().iter().any(|db| db.name == database) {
